@@ -1,0 +1,7 @@
+Con Scheme is a project to write a Scheme implementation in Google's
+Go language. The project is led by Per Odlund and Göran Weinholt, both
+master students at Chalmers University of Technology in Gothenburg,
+Sweden. It is done as part of the Frontiers of Programming Language
+Technology course in the spring of 2011.
+
+ -- Göran Weinholt, 2011-03-10
