@@ -52,11 +52,12 @@
 
 package main
 
-import "unsafe"
 import "big"
 import "fmt"
-import "os"
 import "io"
+import "os"
+import "sync"
+import "unsafe"
 
 // Tags
 const heap_tag = 0
@@ -349,6 +350,7 @@ func make_number(x int) Obj {
 
 // It would be better to use a weak hashset here, if one was available
 var symtab map[string]Obj = make(map[string]Obj)
+var symlock sync.Mutex
 
 func symbol_p(x Obj) Obj {
 	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { return False }
@@ -367,13 +369,15 @@ func string_to_symbol(x Obj) Obj {
 	}
 	v := (*x).([]int)
 	str := string(v)
-	if sym, is_interned := symtab[str]; is_interned {
+	symlock.Lock();	defer symlock.Unlock()
+	sym, is_interned := symtab[str]
+	if is_interned {
 		// string->symbol has already interned this symbol
 		return sym
 	}
 	// Intern the new symbol
 	var stri interface{} = str
-	sym := Obj(&stri)
+	sym = Obj(&stri)
 	symtab[str] = sym
 	return sym
 }
