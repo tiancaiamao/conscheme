@@ -93,7 +93,7 @@ func fixnum_p(x Obj) Obj {
 
 func make_fixnum(x int) Obj {
 	// XXX: assumes x fits in a fixnum
-	return Obj(unsafe.Pointer((uintptr((x << fixnum_shift) | fixnum_tag))))
+	return Obj(unsafe.Pointer(uintptr((x << fixnum_shift) | fixnum_tag)))
 }
 
 func fixnum_to_int(x Obj) int {
@@ -114,7 +114,7 @@ func char_p(x Obj) Obj {
 }
 
 func make_char(x int) Obj {
-	return Obj(unsafe.Pointer((uintptr((x << char_shift) | char_tag))))
+	return Obj(unsafe.Pointer(uintptr((x << char_shift) | char_tag)))
 }
 
 func char_to_int(x Obj) int {
@@ -159,39 +159,26 @@ func cons(x,y Obj) Obj {
 }
 
 func car(x Obj) Obj {
-	if pair_p(x) == False {
-		// Error
-		return Void
-	}
-
+	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { panic("bad type") }
 	v := (*x).(*[2]Obj)
 	return v[0]
 }
 
 func cdr(x Obj) Obj {
-	if pair_p(x) == False {
-		// Error
-		return Void
-	}
+	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { panic("bad type") }
 	v := (*x).(*[2]Obj)
 	return v[1]
 }
 
 func set_car_ex(x,value Obj) Obj {
-	if pair_p(x) == False {
-		// Error
-		return Void
-	}
+	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { panic("bad type") }
 	v := (*x).(*[2]Obj)
 	v[0] = value
 	return Void
 }
 
 func set_cdr_ex(x,value Obj) Obj {
-	if pair_p(x) == False {
-		// Error
-		return Void
-	}
+	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { panic("bad type") }
 	v := (*x).(*[2]Obj)
 	v[1] = value
 	return Void
@@ -225,8 +212,7 @@ func vector(v ...Obj) Obj {
 
 func make_vector(length,init Obj) Obj {
 	if fixnum_p(length) == False {
-		// XXX: should be an error
-		length = make_fixnum(0)
+		panic("bad type")
 	}
 	l := fixnum_to_int(length)
 	v := make([]Obj, fixnum_to_int(length))
@@ -241,28 +227,25 @@ func make_vector(length,init Obj) Obj {
 }
 
 func vector_length(x Obj) Obj {
-	if vector_p(x) == False {
-		// Error
-		return Void
-	}
+	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { panic("bad type") }
 	v := (*x).([]Obj)
 	return make_number(len(v))
 }
 
 
 func vector_ref(x,idx Obj) Obj {
-	if vector_p(x) == False || fixnum_p(idx) == False {
-		// error
-		return Void
+	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag ||
+		(uintptr(unsafe.Pointer(idx)) & fixnum_mask) != fixnum_tag {
+		panic("bad type")
 	}
 	v := (*x).([]Obj)
 	return v[fixnum_to_int(idx)]
 }
 
 func vector_set_ex(x,idx,value Obj) Obj {
-	if vector_p(x) == False || fixnum_p(idx) == False {
-		// error
-		return Void
+	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag ||
+		(uintptr(unsafe.Pointer(idx)) & fixnum_mask) != fixnum_tag {
+		panic("bad type")
 	}
 	v := (*x).([]Obj)
 	v[fixnum_to_int(idx)] = value
@@ -283,9 +266,7 @@ func string_p(x Obj) Obj {
 
 func make_string(length,init Obj) Obj {
 	if fixnum_p(length) == False || char_p(init) == False {
-		// XXX: should be an error
-		length = make_fixnum(0)
-		init = make_char(' ')
+		panic("bad type")
 	}
 	l := fixnum_to_int(length)
 	v := make([]int, fixnum_to_int(length))
@@ -301,18 +282,15 @@ func make_string(length,init Obj) Obj {
 }
 
 func string_length(x Obj) Obj {
-	if string_p(x) == False {
-		// error
-		return Void
-	}
+	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { panic("bad type") }
 	v := (*x).([]int)
 	return make_number(len(v))
 }
 
 func string_ref(x, idx Obj) Obj {
-	if string_p(x) == False || fixnum_p(idx) == False {
-		// error
-		return Void
+	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag ||
+		(uintptr(unsafe.Pointer(idx)) & fixnum_mask) != fixnum_tag {
+		panic("bad type")
 	}
 	v := (*x).([]int)
 	return make_char(v[fixnum_to_int(idx)])
@@ -364,7 +342,7 @@ func symbol_p(x Obj) Obj {
 
 func string_to_symbol(x Obj) Obj {
 	if string_p(x) == False {
-		// error
+		panic("bad type")
 		return Void
 	}
 	v := (*x).([]int)
@@ -384,7 +362,7 @@ func string_to_symbol(x Obj) Obj {
 
 func symbol_to_string(x Obj) Obj {
 	if symbol_p(x) == False {
-		// error
+		panic("bad type")
 		return Void
 	}
 	v := (*x).(string)
@@ -470,6 +448,7 @@ func display(x Obj) { obj_display(x, os.Stdout, False) }
 func write(x Obj) { obj_display(x, os.Stdout, True) }
 
 func main() {
+	// Build an object that contains most types
 	vec := make_vector(make_fixnum(6), make_fixnum(42))
 	vector_set_ex(vec, make_fixnum(0), make_boolean(true))
 	vector_set_ex(vec, make_fixnum(1),
@@ -492,8 +471,19 @@ func main() {
 
 	write(vec)
 	fmt.Printf("\n")
+
+	// Check if symbol interning works
 	fmt.Printf("(eq? 'X 'X) => ")
 	write(make_boolean(string_to_symbol(make_string(make_fixnum(1), make_char('X'))) ==
 		string_to_symbol(make_string(make_fixnum(1), make_char('X')))))
 	fmt.Printf("\n")
+
+	// Try out the error catching
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Printf("this is expected: %v\n", err)
+		}
+	}()
+	car(vec)
+	fmt.Printf("this is unexpected\n")
 }
