@@ -1,29 +1,22 @@
 // Copyright (C) 2011 Göran Weinholt <goran@weinholt.se>
-// All rights reserved.
 
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions
-// are met:
-// 1. Redistributions of source code must retain the above copyright
-//    notice, this list of conditions and the following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright
-//    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.
-// 3. Neither the name of the University nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
 
-// THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-// ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-// LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
-// OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-// SUCH DAMAGE.
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
 
 // Some simple test code to iron out a memory model
 
@@ -85,6 +78,9 @@ const Eol = Obj(unsafe.Pointer(uintptr(0x0f))) // empty list
 const Eof = Obj(unsafe.Pointer(uintptr(0x1f))) // end of file object
 const Void = Obj(unsafe.Pointer(uintptr(0x2f)))	// the unspecified value
 
+const fixnum_max = int(^uint(0) >> (1 + fixnum_shift))
+const fixnum_min = -fixnum_max - 1
+
 // Fixnums
 
 func fixnum_p(x Obj) Obj {
@@ -100,12 +96,20 @@ func fixnum_to_int(x Obj) int {
 	return int(uintptr(unsafe.Pointer(x))) >> fixnum_shift
 }
 
-// func fixnum_add(fx1,fx2 Obj) Obj {
-// 	i1 := uintptr(unsafe.Pointer(fx1))
-// 	i2 := uintptr(unsafe.Pointer(fx2))
-// 	r := i1 + i2
-// 	...
-// }
+func fixnum_add(fx1,fx2 Obj) Obj {
+	i1 := uintptr(unsafe.Pointer(fx1))
+	i2 := uintptr(unsafe.Pointer(fx2))
+	if (i1 & fixnum_mask) != fixnum_tag || (i2 & fixnum_mask) != fixnum_tag {
+		panic("bad type")
+	}
+	r := i1 + i2
+	// TODO: how should we do this?
+	// if r < fixnum_min || r > fixnum_max {
+	// 	panic("result not representable")
+	// }
+
+	return Obj(unsafe.Pointer(uintptr(r - fixnum_tag)))
+}
 
 // Chars
 
@@ -477,6 +481,12 @@ func main() {
 	write(make_boolean(string_to_symbol(make_string(make_fixnum(1), make_char('X'))) ==
 		string_to_symbol(make_string(make_fixnum(1), make_char('X')))))
 	fmt.Printf("\n")
+
+	// Fixnum range
+	fmt.Printf("(greatest-fixnum) => %d\n(least-fixnum) => %d\n",
+		fixnum_max, fixnum_min)
+	fmt.Printf("(fx+ (greatest-fixnum) (least-fixnum)) => %d\n",
+		fixnum_to_int(fixnum_add(make_fixnum(fixnum_max), make_fixnum(fixnum_min))))
 
 	// Try out the error catching
 	defer func() {
