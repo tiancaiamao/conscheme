@@ -20,6 +20,7 @@
 ;; THE SOFTWARE.
 
 (include "expander.scm")
+(include "serialize.scm")
 ;; (include "codegen.scm")
 
 ;; See what happens...
@@ -30,3 +31,15 @@
 (pretty-print
  (expand '(include "main.scm")
          (exp-new-env)))
+
+(define output-file "main.cso")
+
+(if (file-exists? output-file)
+    (delete-file output-file))
+
+(call-with-port (open-file-output-port output-file)
+  (lambda (p)
+    (serialize-object
+     (expand '(include "main.scm")
+             (exp-new-env))
+     p)))
