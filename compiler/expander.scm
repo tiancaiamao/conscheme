@@ -100,7 +100,15 @@
               (map cadr bindings))))
 
 (define-macro (let* bindings . body)
-  (list 'FIXME-let*))
+  (if (null? body)
+      (error 'let* "Empty body" bindings body))
+  (let lp ((b bindings))
+    (if (null? b)
+        (cons 'begin body)
+        (let ((b1 (car b))
+              (b (cdr b)))
+          (list 'let (list b1)
+                (lp b))))))
 
 (define-macro (letrec bindings . body)
   (let ((temps (map (lambda (_) (gensym)) bindings)))
@@ -123,10 +131,50 @@
               (lp (cons datum datums))))))))
 
 (define-macro (case value . cases)
-  (list 'FIXME-case))
+  (let ((tmp (gensym)))
+    (list 'let (list (list tmp value))
+          (cons 'cond
+                (map (lambda (c)
+                       (cond ((eq? (car c) 'else)
+                              c)
+                             (else
+                              (list (list 'memv (gensym) (list 'quote (car c)))
+                                    (cadr c)))))
+                     cases)))))
 
 (define-macro (cond . tests)
-  (list 'FIXME-cond))
+  ;; TODO: does not support =>
+  (let lp ((tests tests))
+    (if (null? tests)
+        (list 'void)
+        (let ((test (car tests))
+              (tests (cdr tests)))
+          (if (eq? (car test) 'else)
+              (if (null? tests)
+                  (cadr test)
+                  (error 'cond "else must be the last test" tests))
+              (list 'if
+                    (car test)
+                    (cadr test)
+                    (lp tests)))))))
+
+(define-macro (or . arms)
+  (let lp ((arms arms))
+    (cond ((null? arms) #f)
+          ((null? (cdr arms))
+           (car arms))
+          (else
+           (let ((tmp (gensym)))
+             (list 'let (list (list tmp (car arms)))
+                   (list 'if tmp tmp (lp (cdr arms)))))))))
+
+(define-macro (and . arms)
+  (let lp ((arms arms))
+    (cond ((null? arms) #t)
+          ((null? (cdr arms))
+           (car arms))
+          (else
+           (list 'if (car arms) (lp (cdr arms)) #f)))))
 
 (define (formals-to-list x)
   (cond ((null? x) x)
