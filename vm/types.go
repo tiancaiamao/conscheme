@@ -1,4 +1,5 @@
 // Copyright (C) 2011 Göran Weinholt <goran@weinholt.se>
+// Copyright (C) 2011 Per Odlund <per.odlund@gmail.com>
 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -48,7 +49,7 @@ package types
 import "big"
 import "fmt"
 import "io"
-//import "os"
+import "os"
 import "sync"
 import "unsafe"
 
@@ -385,7 +386,7 @@ func Symbol_to_string(x Obj) Obj {
 
 // Object printer (for debugging)
 
-func obj_display(x Obj, p io.Writer, write Obj) {
+func Obj_display(x Obj, p io.Writer, write Obj) {
 	switch {
 	case fixnum_p(x) != False:
 		fmt.Fprintf(p, "%d", fixnum_to_int(x))
@@ -407,11 +408,11 @@ func obj_display(x Obj, p io.Writer, write Obj) {
 		fmt.Fprintf(p, "#(")
 		length := fixnum_to_int(vector_length(x))
 		for i := 0; i < length - 1; i++ {
-			obj_display(Vector_ref(x,Make_fixnum(i)), p, write)
+			Obj_display(Vector_ref(x,Make_fixnum(i)), p, write)
 			fmt.Fprintf(p, " ")
 		}
 		if length > 0 {
-			obj_display(Vector_ref(x,Make_fixnum(length-1)), p, write)
+			Obj_display(Vector_ref(x,Make_fixnum(length-1)), p, write)
 		}
 		fmt.Fprintf(p, ")")
 	case string_p(x) != False:
@@ -425,11 +426,11 @@ func obj_display(x Obj, p io.Writer, write Obj) {
 		if write != False { fmt.Fprintf(p, "\"") }
 	case symbol_p(x) != False:
 		// XXX: doesn't handle escapes
-		obj_display(Symbol_to_string(x), p, False)
+		Obj_display(Symbol_to_string(x), p, False)
 	case pair_p(x) != False:
 		fmt.Fprintf(p, "(")
 		for i := x; i != Eol; {
-			obj_display(car(i), p, write)
+			Obj_display(car(i), p, write)
 			i = cdr(i)
 			switch {
 			case i == Eol:
@@ -437,7 +438,7 @@ func obj_display(x Obj, p io.Writer, write Obj) {
 				fmt.Fprintf(p, " ")
 			default:
 				fmt.Fprintf(p, " . ")
-				obj_display(i, p, write)
+				Obj_display(i, p, write)
 				i = Eol
 			}
 		}
@@ -456,5 +457,5 @@ func obj_display(x Obj, p io.Writer, write Obj) {
 	}
 }
 
-//func display(x Obj) { obj_display(x, os.Stdout, False) }
-//func write(x Obj) { obj_display(x, os.Stdout, True) }
+func Display(x Obj) { Obj_display(x, os.Stdout, False) }
+func Write(x Obj) { Obj_display(x, os.Stdout, True) }

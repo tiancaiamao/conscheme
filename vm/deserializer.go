@@ -27,7 +27,7 @@ import (
 		"os"
 		"unsafe"
 	.		"./types"
-//		"fmt"
+		"fmt"
 		"big"
 )
 
@@ -38,8 +38,8 @@ const (
 	Null	= 3
 	String	= 4
 	Symbol	= 5
-	Boolean	= 7
-	Char	= 8
+	Boolean	= 6
+	Char	= 7
 )
 
 const Version = 1
@@ -54,36 +54,45 @@ type Deserializer struct {
 func (d *Deserializer) readMagic() (os.Error) {
 	s := "conscheme serialized object format\n"
 	buf := make([]byte, len (s))
-	if _, e := io.ReadFull(d.r, buf); e != nil {
+	i, e := io.ReadFull(d.r, buf)
+	if e != nil {
 		return e;
 	}
 	if s != string(buf) {
 		return HeaderError;
 	}
+	fmt.Printf("offset: %v\n", i)
 	return nil
 }
 
 func (d *Deserializer) readVersion() byte {
 	var buf [1]byte
 	d.r.Read(buf[0:1])
+	fmt.Printf("Version: %v\n", buf[0])
 	return buf[0]
 }
 
 func (d *Deserializer) readInt() *big.Int {
 	var buf [1]byte
-	d.r.Read(buf[0:1])
+	io.ReadFull(d.r, buf[0:1])
 	sign := buf[0]
 	v := big.NewInt(0)
 	tmp := big.NewInt(0)
 	for i := uint(0); ;i += 7 {
-		d.r.Read(buf[0:1])
-		tmp.SetInt64(int64(buf[0] & 0x7F))
-		tmp.Lsh(tmp, i)
-		v.Or(v,tmp)
+		io.ReadFull(d.r,buf[0:1])
+	//	fmt.Printf("%v \n", buf)
+	//	fmt.Printf("%v \n", tmp)
+		tmp = tmp.SetInt64(int64(buf[0] & 0x7F))
+	//	fmt.Printf("%v \n", tmp)
+		tmp = tmp.Lsh(tmp, i)
+	//	fmt.Printf("%v \n", tmp)
+	//	fmt.Printf("%v \n", v)
+		v = v.Or(v,tmp)
 		if (buf[0] & 0x80) == 0 {
 			break;
 		}
 	}
+	fmt.Printf("BigInt: %v \n", v)
 	if sign == 1 {
 		return v.Neg(v)
 	}
@@ -97,29 +106,34 @@ func (d *Deserializer) readString(i int64) string {
 }
 
 const Void2 = Obj(unsafe.Pointer(uintptr(0x2f)))
+const Eol2 = Obj(unsafe.Pointer(uintptr(0x0f)))
 
-func (d *Deserializer) readObject() Obj {
+func (d *Deserializer) ReadObject() Obj {
 	tag := d.readInt().Int64()
 	length := d.readInt()
 	switch tag {
 	case Integer:
+		fmt.Print("Int\n")
 		var vv interface{} = length
 		return Obj(&vv)
 	case Pair:
-		o1 := d.readObject()
-		o2 := d.readObject()
+		fmt.Print("Pair\n")
+		o1 := d.ReadObject()
+		o2 := d.ReadObject()
 		return Cons(o1,o2)
 	case Vector:
+		fmt.Print("Vector\n")
 		l := length.Int64() // fix
 		obj := Make_vector(Make_fixnum(int(l)),Void2)
 		var i int64 = 0
-		for ; i < l; l++ {
-			t := d.readObject()
+		for ; i < l; i++ {
+			t := d.ReadObject()
 			Vector_set_ex(obj,Make_fixnum(int(i)),t)
 		}
 		return obj
 	case Null:
-		return Obj(nil)
+		fmt.Print("Null\n")
+		return Eol2
 	case String:
 		s := d.readString(length.Int64())
 		return String_string(s)
@@ -128,15 +142,17 @@ func (d *Deserializer) readObject() Obj {
 		s := d.readString(i)
 		return String_to_symbol(String_string(s))
 	case Boolean:
-		if (length.Int64() == 0){
+		if length.Int64() != 0 {
 			return Make_boolean(true)
 		}
 		return Make_boolean(false)
 	case Char:
-		c := d.readInt().Int64()
+		fmt.Print("Char\n")
+		c := length.Int64()
 		return Make_char(int(c))
 	}
-	panic("unknown type")
+	s := fmt.Sprintf("unknown tag: %v length: %v", tag, length)
+	panic(s)
 }
 
 func NewReader(r io.Reader) (*Deserializer, os.Error) {
@@ -145,5 +161,6 @@ func NewReader(r io.Reader) (*Deserializer, os.Error) {
 	if e := d.readMagic(); e != nil {
 		return nil,e
 	}
+	d.readVersion()
 	return d,nil
 }
