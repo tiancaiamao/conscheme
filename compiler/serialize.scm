@@ -45,11 +45,9 @@
 
 (define TYPE-SYMBOL 5)
 
-(define TYPE-VECTOR 6)
+(define TYPE-BOOLEAN 6)
 
-(define TYPE-BOOLEAN 7)
-
-(define TYPE-CHAR 8)
+(define TYPE-CHAR 7)
 
 ;; Somewhat inefficient representation of integers
 (define (write-integer t p)
