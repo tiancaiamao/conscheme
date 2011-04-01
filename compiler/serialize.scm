@@ -45,11 +45,9 @@
 
 (define TYPE-SYMBOL 5)
 
-(define TYPE-VECTOR 6)
+(define TYPE-BOOLEAN 6)
 
-(define TYPE-BOOLEAN 7)
-
-(define TYPE-CHAR 8)
+(define TYPE-CHAR 7)
 
 ;; Somewhat inefficient representation of integers
 (define (write-integer t p)
@@ -100,8 +98,7 @@
            (serialize (vector-ref x i) p)))
         ((boolean? x)
          (write-type TYPE-BOOLEAN p)
-         (write-length 1 p)
-         (write-integer (if x 1 0) p))
+         (write-length (if x 1 0) p))
         ((char? x)
          (write-type TYPE-CHAR p)
          (write-integer (char->integer x) p))
