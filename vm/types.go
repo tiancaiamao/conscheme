@@ -19,7 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// Some simple test code to iron out a memory model
+// Basic definitions of Scheme object types and a few primitives
 
 // All Scheme objects have type Obj. The two low bits in pointers are
 // used to get limited type tagging. Normally one would want the tag
@@ -44,14 +44,16 @@
 // *big.Int     bignum
 // string       symbol
 
-package types
+package conscheme
 
-import "big"
-import "fmt"
-import "io"
-import "os"
-import "sync"
-import "unsafe"
+import (
+	"big"
+	"fmt"
+	"io"
+	"os"
+	"sync"
+	"unsafe"
+)
 
 // Tags
 const heap_tag = 0

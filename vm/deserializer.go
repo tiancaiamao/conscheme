@@ -18,15 +18,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// A simple desirializer for reading wm-code
+// A simple deserializer for reading vm-code
 
-package deserializer
+package conscheme
 
 import (
 		"io"
 		"os"
-		"unsafe"
-	.		"./types"
 		"fmt"
 		"big"
 )
@@ -54,21 +52,19 @@ type Deserializer struct {
 func (d *Deserializer) readMagic() (os.Error) {
 	s := "conscheme serialized object format\n"
 	buf := make([]byte, len (s))
-	i, e := io.ReadFull(d.r, buf)
+	_, e := io.ReadFull(d.r, buf)
 	if e != nil {
 		return e;
 	}
 	if s != string(buf) {
 		return HeaderError;
 	}
-	fmt.Printf("offset: %v\n", i)
 	return nil
 }
 
 func (d *Deserializer) readVersion() byte {
 	var buf [1]byte
 	d.r.Read(buf[0:1])
-	fmt.Printf("Version: %v\n", buf[0])
 	return buf[0]
 }
 
@@ -80,19 +76,13 @@ func (d *Deserializer) readInt() *big.Int {
 	tmp := big.NewInt(0)
 	for i := uint(0); ;i += 7 {
 		io.ReadFull(d.r,buf[0:1])
-	//	fmt.Printf("%v \n", buf)
-	//	fmt.Printf("%v \n", tmp)
 		tmp = tmp.SetInt64(int64(buf[0] & 0x7F))
-	//	fmt.Printf("%v \n", tmp)
 		tmp = tmp.Lsh(tmp, i)
-	//	fmt.Printf("%v \n", tmp)
-	//	fmt.Printf("%v \n", v)
 		v = v.Or(v,tmp)
 		if (buf[0] & 0x80) == 0 {
 			break;
 		}
 	}
-	fmt.Printf("BigInt: %v \n", v)
 	if sign == 1 {
 		return v.Neg(v)
 	}
@@ -105,26 +95,20 @@ func (d *Deserializer) readString(i int64) string {
 	return string(b)
 }
 
-const Void2 = Obj(unsafe.Pointer(uintptr(0x2f)))
-const Eol2 = Obj(unsafe.Pointer(uintptr(0x0f)))
-
 func (d *Deserializer) ReadObject() Obj {
 	tag := d.readInt().Int64()
 	length := d.readInt()
 	switch tag {
 	case Integer:
-		fmt.Print("Int\n")
 		var vv interface{} = length
 		return Obj(&vv)
 	case Pair:
-		fmt.Print("Pair\n")
 		o1 := d.ReadObject()
 		o2 := d.ReadObject()
 		return Cons(o1,o2)
 	case Vector:
-		fmt.Print("Vector\n")
 		l := length.Int64() // fix
-		obj := Make_vector(Make_fixnum(int(l)),Void2)
+		obj := Make_vector(Make_fixnum(int(l)),Void)
 		var i int64 = 0
 		for ; i < l; i++ {
 			t := d.ReadObject()
@@ -132,8 +116,7 @@ func (d *Deserializer) ReadObject() Obj {
 		}
 		return obj
 	case Null:
-		fmt.Print("Null\n")
-		return Eol2
+		return Eol
 	case String:
 		s := d.readString(length.Int64())
 		return String_string(s)
@@ -147,7 +130,6 @@ func (d *Deserializer) ReadObject() Obj {
 		}
 		return Make_boolean(false)
 	case Char:
-		fmt.Print("Char\n")
 		c := length.Int64()
 		return Make_char(int(c))
 	}
