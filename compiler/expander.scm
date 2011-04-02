@@ -29,6 +29,7 @@
 ;; (<procedure> <argument> ...)
 ;; (quote <datum>)
 ;; (set! <variable> <expression>)
+;; <variable>
 
 ;; It would be nice to write this code with quasiquote, etc, but then
 ;; we'd be forced to implement them, which I'm not sure we will have
@@ -42,6 +43,14 @@
 (define (set!-name x) (cadr x))
 
 (define (set!-expression x) (caddr x))
+
+(define (if-test x) (cadr x))
+
+(define (if-consequence x) (caddr x))
+
+(define (if-alternative? x) (pair? (cdddr x)))
+
+(define (if-alternative x) (cadddr x))
 
 ;; (define (define-macro-name x) (caadr x))
 
@@ -194,33 +203,48 @@
       (cons 'begin body)))
 
 (define (expand x env)
-  (if (not (pair? x))
-      x
-      (let ((expander (assq (car x) *macros*)))
-        (if expander
-            (expand (apply (cdr expander) (cdr x)) env)
-            (case (car x)
-              ((lambda)
-               (list 'lambda (lambda-formals x)
-                     (let ((newenv (exp-extend-env (lambda-formals x) env)))
-                       (expand (begin-wrap (lambda-body x)) newenv))))
-              ((if)
-               (cons 'if (map (lambda (x) (expand x env)) (cdr x))))
-              ((quote) x)
-              ((define)
-               (if (list? (cadr x))
-                   ;; (define (name . formals) body)
-                   (expand (list 'define (caadr x)
-                                 (append (list 'lambda (cdadr x)) (cddr x)))
-                           env)
-                   ;; (define name code)
-                   (list 'define (cadr x) (expand (caddr x) env))))
-              ((begin)
-               (cons 'begin (map-in-order (lambda (x) (expand x env)) (cdr x))))
-              ((set!)
-               (list 'set! (set!-name x) (expand (set!-expression x) env)))
-              (else
-               ;; Probably a procedure call
-               (if (list? x)
-                   (map (lambda (x) (expand x env)) x)
-                   (error 'expand "Syntax error" x))))))))
+  (define (expand* x env)
+    (let ((expander (assq (car x) *macros*)))
+      (if expander
+          (expand (apply (cdr expander) (cdr x)) env)
+          (case (car x)
+            ((lambda)
+             ;; TODO: transform define into letrec
+             (list 'lambda (lambda-formals x)
+                   (let ((newenv (exp-extend-env (lambda-formals x) env)))
+                     (expand (begin-wrap (lambda-body x)) newenv))))
+            ((if)
+             (list 'if
+                   (expand (if-test x) env)
+                   (expand (if-consequence x) env)
+                   (expand (if (if-alternative? x)
+                               (if-alternative x)
+                               '(unspecified))
+                           env)))
+            ((quote) x)
+            ((define)
+             (if (list? (cadr x))
+                 ;; (define (name . formals) body)
+                 (expand (list 'define (caadr x)
+                               (append (list 'lambda (cdadr x)) (cddr x)))
+                         env)
+                 ;; (define name code)
+                 (list 'define (cadr x) (expand (caddr x) env))))
+            ((begin)
+             (cons 'begin (map-in-order (lambda (x) (expand x env)) (cdr x))))
+            ((set!)
+             (list 'set! (set!-name x) (expand (set!-expression x) env)))
+            (else
+             ;; Probably a procedure call
+             (if (list? x)
+                 (map (lambda (x) (expand x env)) x)
+                 (error 'expand "Syntax error" x)))))))
+  (cond ((symbol? x) x)
+        ((or (char? x) (number? x) (boolean? x) (string? x))
+         (list 'quote x))
+        ((vector? x)
+         (error 'expand "Invalid expression: vectors must be quoted" x))
+        ((pair? x)
+         (expand* x env))
+        (else
+         (error 'expand "Invalid syntax" x))))
