@@ -201,6 +201,18 @@ func list(v ...Obj) Obj {
 	return ret
 }
 
+func Length(x Obj) Obj {
+	var l int
+	for l = 0; x != Eol; l++ {
+		if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
+			panic("not a list")
+		}
+		v := (*x).(*[2]Obj)
+		x = v[1]
+	}
+	return make_number(l)
+}
+
 
 // Vectors
 
@@ -339,11 +351,33 @@ func make_number(x int) Obj {
 	return v
 }
 
+func number_to_int(x Obj) int {
+	if (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag {
+		return fixnum_to_int(x)
+	}
+
+	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
+		panic("bad type")
+	}
+
+	switch v := (*x).(type) {
+	case *big.Int:
+		// XXX:
+		return int(v.Int64())
+	}
+	panic("bad type")
+}
+
+
 // Symbols
 
 // It would be better to use a weak hashset here, if one was available
 var symtab map[string]Obj = make(map[string]Obj)
 var symlock sync.Mutex
+
+func intern(x string) Obj {
+	return String_to_symbol(String_string(x))
+}
 
 func symbol_p(x Obj) Obj {
 	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { return False }
@@ -459,5 +493,12 @@ func Obj_display(x Obj, p io.Writer, write Obj) {
 	}
 }
 
-func Display(x Obj) { Obj_display(x, os.Stdout, False) }
-func Write(x Obj) { Obj_display(x, os.Stdout, True) }
+func Display(x Obj) Obj {
+	Obj_display(x, os.Stdout, False)
+	return Void
+}
+
+func Write(x Obj) Obj {
+	Obj_display(x, os.Stdout, True)
+	return Void
+}

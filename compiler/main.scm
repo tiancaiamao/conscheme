@@ -19,8 +19,14 @@
 ;; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 ;; THE SOFTWARE.
 
-(include "expander.scm")
+(include "defmacro.scm")
+(cond-expand
+ (conscheme (include "library.scm"))
+ (else #f))
+(include "primitives.scm")
+(include "aconv.scm")
 (include "serialize.scm")
+(include "expander.scm")
 ;; (include "codegen.scm")
 
 ;; See what happens...
@@ -28,18 +34,36 @@
  (guile (use-modules (ice-9 pretty-print)))
  (else (define (pretty-print x) (display x))))
 
-(pretty-print
- (expand '(include "main.scm")
-         (exp-new-env)))
+(define (compile)
+  (let ((output-file "main.cso")
+        (input-file "main.scm"))
+    (let ((code (primops (aconv (expand (list 'include input-file))))))
+      (if (member "print" (command-line))
+          (pretty-print code))
+      (if (file-exists? output-file)
+          (delete-file output-file))
+      (call-with-port (open-file-output-port output-file)
+        (lambda (p)
+          (serialize-object code p))))))
 
-(define output-file "main.cso")
+(cond ((member "compile" (command-line))
+       (compile))
+      ((member "genprim" (command-line))
+       (print-operations (current-output-port)))
+      (else
+       (display "Usage: main compile|genprim.\n")
+       (exit 1)))
 
-(if (file-exists? output-file)
-    (delete-file output-file))
 
-(call-with-port (open-file-output-port output-file)
-  (lambda (p)
-    (serialize-object
-     (expand '(include "main.scm")
-             (exp-new-env))
-     p)))
+;; xxx: only if requested on the command line
+
+
+;; (let ((output-file "main.cso")
+;;       (input-file "main.scm"))
+;;   (let ((code (primops (aconv (expand '(cons 1 (if #f #f)))))))
+;;     (pretty-print code)
+;;     (if (file-exists? output-file)
+;;         (delete-file output-file))
+;;     (call-with-port (open-file-output-port output-file)
+;;       (lambda (p)
+;;         (serialize-object code p)))))

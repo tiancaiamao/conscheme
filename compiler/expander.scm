@@ -38,7 +38,9 @@
 ;;;
 (define (lambda-formals x) (cadr x))
 
-(define (lambda-body x) (cddr x))
+(define (lambda-body* x) (cddr x))      ;multi-expression lambda
+
+(define (lambda-body x) (caddr x))      ;simplified lambda
 
 (define (set!-name x) (cadr x))
 
@@ -57,12 +59,6 @@
 ;; (define (define-macro-formals x) (cdadr x))
 
 ;;;
-
-(define *macros* '())
-
-(define (add-macro! name proc)
-  (set! *macros* (cons (cons name proc)
-                       *macros*)))
 
 (cond-expand
  (guile
@@ -153,6 +149,7 @@
 
 (define-macro (cond . tests)
   ;; TODO: does not support =>
+  ;; TODO: does not support (cond (expr))
   (let lp ((tests tests))
     (if (null? tests)
         (list 'void)
@@ -160,11 +157,11 @@
               (tests (cdr tests)))
           (if (eq? (car test) 'else)
               (if (null? tests)
-                  (cadr test)
+                  (cons 'begin (cdr test))
                   (error 'cond "else must be the last test" tests))
               (list 'if
                     (car test)
-                    (cadr test)
+                    (cons 'begin (cdr test))
                     (lp tests)))))))
 
 (define-macro (or . arms)
@@ -193,7 +190,6 @@
 (define (exp-new-env) '())
 
 (define (exp-extend-env formals env)
-  ;; XXX: handle rest arguments
   (append (formals-to-list formals) env))
 
 (define (begin-wrap body)
@@ -202,42 +198,47 @@
       body
       (cons 'begin body)))
 
-(define (expand x env)
-  (define (expand* x env)
+(define (expand* x env)
+  (define (expand** x env)
     (let ((expander (assq (car x) *macros*)))
       (if expander
-          (expand (apply (cdr expander) (cdr x)) env)
+          (expand* (apply (cdr expander) (cdr x)) env)
           (case (car x)
             ((lambda)
              ;; TODO: transform define into letrec
+             (if (null? (lambda-body* x))
+                 (error 'expand "Missing lambda body" x))
              (list 'lambda (lambda-formals x)
                    (let ((newenv (exp-extend-env (lambda-formals x) env)))
-                     (expand (begin-wrap (lambda-body x)) newenv))))
+                     (expand* (begin-wrap (lambda-body* x)) newenv))))
             ((if)
              (list 'if
-                   (expand (if-test x) env)
-                   (expand (if-consequence x) env)
-                   (expand (if (if-alternative? x)
-                               (if-alternative x)
-                               '(unspecified))
-                           env)))
+                   (expand* (if-test x) env)
+                   (expand* (if-consequence x) env)
+                   (expand* (if (if-alternative? x)
+                                (if-alternative x)
+                                '(unspecified))
+                            env)))
             ((quote) x)
             ((define)
-             (if (list? (cadr x))
-                 ;; (define (name . formals) body)
-                 (expand (list 'define (caadr x)
-                               (append (list 'lambda (cdadr x)) (cddr x)))
-                         env)
-                 ;; (define name code)
-                 (list 'define (cadr x) (expand (caddr x) env))))
+             (cond ((pair? (cadr x))
+                    ;; (define (name . formals) body)
+                    (expand* (list 'define (caadr x)
+                                   (append (list 'lambda (cdadr x)) (cddr x)))
+                             env))
+                   (else
+                    ;; (define name expr)
+                    (if (not (symbol? (cadr x)))
+                        (error 'expand "Syntax error" x))
+                    (list 'define (cadr x) (expand* (caddr x) env)))))
             ((begin)
-             (cons 'begin (map-in-order (lambda (x) (expand x env)) (cdr x))))
+             (cons 'begin (map-in-order (lambda (x) (expand* x env)) (cdr x))))
             ((set!)
-             (list 'set! (set!-name x) (expand (set!-expression x) env)))
+             (list 'set! (set!-name x) (expand* (set!-expression x) env)))
             (else
              ;; Probably a procedure call
              (if (list? x)
-                 (map (lambda (x) (expand x env)) x)
+                 (map (lambda (x) (expand* x env)) x)
                  (error 'expand "Syntax error" x)))))))
   (cond ((symbol? x) x)
         ((or (char? x) (number? x) (boolean? x) (string? x))
@@ -245,6 +246,9 @@
         ((vector? x)
          (error 'expand "Invalid expression: vectors must be quoted" x))
         ((pair? x)
-         (expand* x env))
+         (expand** x env))
         (else
          (error 'expand "Invalid syntax" x))))
+
+(define (expand x)
+  (expand* x (exp-new-env)))
