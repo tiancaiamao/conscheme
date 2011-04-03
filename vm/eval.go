@@ -21,6 +21,9 @@
 /// Simple tree interpreter for Scheme. We'll use this to iron out a
 /// few details before we hopefully go over to a bytecode VM.
 
+// Limitations: wrong semantics for mutable variables, and no TCO. No
+// call/cc, etc.
+
 package conscheme
 
 import (
@@ -114,7 +117,16 @@ func lambda_apply(proc Procedure, args []Obj, lexenv map[string]Obj) Obj {
 	return ev(proc.body, true, newenv)
 }
 
-func ev(code Obj, tailpos bool, lexenv map[string]Obj) Obj {
+func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
+	code := origcode
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Printf("Error in Scheme code: %v\n", err)
+			Write(origcode)
+			fmt.Printf("\n")
+			panic("no error recovery yet")
+		}
+	}()
 	// fmt.Printf("eval: ")
 	// Write(code)
 	// fmt.Printf("\n")
@@ -198,7 +210,8 @@ func ev(code Obj, tailpos bool, lexenv map[string]Obj) Obj {
 		code = cdr(code)
 		return evprim(primop, code, lexenv)
 	default:
-		panic(fmt.Sprintf("Unimplemented syntax: %s",cmd))
+		name := (*cmd).(string)
+		panic(fmt.Sprintf("Unimplemented syntax: %s",name))
 	}
 
 	panic("One of the eval cases did not return")
@@ -212,14 +225,5 @@ func ap(oproc Obj, args []Obj, lexenv map[string]Obj) Obj {
 
 // Runs the simple language emitted by the "compiler"
 func Eval(code Obj) Obj {
-	defer func() {
-		if err := recover(); err != nil {
-			fmt.Printf("Error in Scheme code: %v\n", err)
-			// TODO: the bytecode vm should print the
-			// errant expression here
-			panic("no error recovery yet")
-		}
-	}()
-
 	return ev(code, true, nil)
 }
