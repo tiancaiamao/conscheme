@@ -46,7 +46,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error opening image file: %v\n", e)
 		usage()
 	}
-	d,_ := NewReader(f)
+	d, e := NewReader(f)
+	if e != nil {
+		fmt.Fprintf(os.Stderr, "Not a conscheme image file: %v\n", e)
+		usage()
+	}
 	_ = d.ReadObject()
 	code := d.ReadObject()
 	// header := d.ReadObject()
