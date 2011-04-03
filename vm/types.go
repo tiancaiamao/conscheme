@@ -368,6 +368,47 @@ func number_to_int(x Obj) int {
 	panic("bad type")
 }
 
+func number_p(x Obj) Obj {
+	if (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag {
+		return True
+	}
+	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
+		return False
+	}
+	switch v := (*x).(type) {
+	case *big.Int:
+		return True
+	}
+	return False
+}
+
+func number_equal(x,y Obj) Obj {
+	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
+	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	if xfx && yfx {	return Make_boolean(x == y) }
+
+	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
+		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
+		panic("bad type")
+	}
+
+	if xfx { return number_equal(y,x) }
+
+	switch vx := (*x).(type) {
+	case *big.Int:
+		if yfx {
+			vy := big.NewInt(int64(fixnum_to_int(y)))
+			return Make_boolean(vx.Cmp(vy) == 0)
+		}
+		switch vy := (*y).(type) {
+		case *big.Int:
+			return Make_boolean(vx.Cmp(vy) == 0)
+		default:
+			panic("bad type")
+		}
+	}
+	panic("bad type")
+}
 
 // Symbols
 

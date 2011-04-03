@@ -46,6 +46,21 @@
         (lambda (p)
           (serialize-object code p))))))
 
+(define (print . x) (for-each (lambda (x) (display x)) x) (newline))
+
+(cond-expand
+ (conscheme
+  (print "conscheme running")
+  (print "Some tests:")
+  (print "command line: " (command-line))
+  (print (list '(least-fixnum) '=> (least-fixnum)))
+  (print (list '(greatest-fixnum) '=> (greatest-fixnum)))
+  (print (list '(= (string-length "a") 1) '=>
+               (= (string-length "a") 1)))
+  (print (list '(= 1 (string-length "a")) '=>
+               (= 1 (string-length "a")))))
+ (else #F))
+
 (cond ((member "compile" (command-line))
        (compile))
       ((member "genprim" (command-line))

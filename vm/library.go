@@ -19,46 +19,21 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package main
+// Standard library for conscheme
 
-import (
-	. "conscheme"
-	"flag"
-	"fmt"
-	"os"
-)
+package conscheme
 
-func usage() {
-	fmt.Fprintf(os.Stderr, "Usage: conscheme <cso file>\n")
-	flag.PrintDefaults()
-	os.Exit(1)
+import "os"
+
+// Misc
+
+func Command_line() Obj {
+	ret := Eol
+	for i := len(os.Args)-1; i >= 0; i-- {
+		arg := ([]int)(os.Args[i])
+		var vv interface{} = arg
+		ret = Cons(Obj(&vv), ret)
+	}
+	return ret
 }
 
-func main() {
-	flag.Parse()
-	args := flag.Args()
-	if len(args) < 1 {
-		usage()
-	}
-	// For now we only run image files. Later we should start a REPL.
-	f, e := os.Open(args[0], os.O_RDONLY, 0666)
-	if e != nil {
-		fmt.Fprintf(os.Stderr, "Error opening image file: %v\n", e)
-		usage()
-	}
-	d, e := NewReader(f)
-	if e != nil {
-		fmt.Fprintf(os.Stderr, "Not a conscheme image file: %v\n", e)
-		usage()
-	}
-	_ = d.ReadObject()
-	code := d.ReadObject()
-	// header := d.ReadObject()
-	// code := d.ReadObject()
-	// Write(header)
-	// fmt.Print("\n")
-	// Write(code)
-	// fmt.Print("\n")
-	Eval(code)
-	//fmt.Print("\n")
-}

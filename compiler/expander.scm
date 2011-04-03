@@ -152,7 +152,7 @@
   ;; TODO: does not support (cond (expr))
   (let lp ((tests tests))
     (if (null? tests)
-        (list 'void)
+        (list 'unspecified)
         (let ((test (car tests))
               (tests (cdr tests)))
           (if (eq? (car test) 'else)

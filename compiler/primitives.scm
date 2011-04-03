@@ -45,6 +45,18 @@
         (append (list 'lambda '())
                 body)))
 
+(define-macro (define-call opname funcname args)
+  (let ((opname* (string->symbol
+                  (string-append (symbol->string opname)
+                                 "/" (number->string args)))))
+    (list 'begin
+          (list 'define-operation opname* (list 'normal-call funcname args))
+          (list 'define-primitive (list opname 'args)
+                (list 'if (list '= (list 'length 'args) args)
+                      (list 'quote opname*)
+                      (list 'quote 'ERROR))))))
+
+
 (define (shift-args) "code = cdr(code)")
 (define (argn n)
   (case n
@@ -91,19 +103,36 @@
 
 ;; Pairs
 
-(define-operation cons/2 (normal-call "Cons" 2))
-(define-primitive (cons args)
-  (if (= (length args) 2)
-      'cons/2
-      'ERROR))
+(define-call cons "Cons" 2)
+(define-call car "car" 1)
+(define-call cdr "cdr" 1)
 
 ;; Symbols
 
-(define-operation symbol?/1 (normal-call "symbol_p" 1))
-(define-primitive (symbol? args)
-  (if (= (length args) 1)
-      'symbol?/1
+(define-call symbol? "symbol_p" 1)
+
+;; Numbers
+
+(define-call number? "number_p" 1)
+(define-call = "number_equal" 2)        ; TODO: = is n-ary
+
+(define-operation least-fixnum/0 (list "return Make_fixnum(fixnum_min)"))
+(define-primitive (least-fixnum args)
+  (if (= (length args) 0)
+      'least-fixnum/0
       'ERROR))
+
+(define-operation greatest-fixnum/0 (list "return Make_fixnum(fixnum_max)"))
+(define-primitive (greatest-fixnum args)
+  (if (= (length args) 0)
+      'greatest-fixnum/0
+      'ERROR))
+
+;; Strings
+
+(define-call string? "string_p" 1)
+(define-call string-length "String_length" 1)
+(define-call string-ref "String_ref" 2)
 
 ;; Misc
 
@@ -131,11 +160,19 @@
     ((1) 'exit/1)
     (else 'ERROR)))
 
+(define-operation command-line/0 (normal-call "Command_line" 0))
+(define-primitive (command-line args)
+  (if (= (length args) 0)
+      'command-line/0
+      'ERROR))
+
+(define-call not "not" 1)
+
 ;; I/O
 
 (define-operation display/1 (normal-call "Display" 1))
 (define-primitive (display args)
-  ;; TODO: display with the port argument
+  ;; TODO: display with the port argument. write display in scheme instead
   (if (= (length args) 1)
       'display/1
       'ERROR))

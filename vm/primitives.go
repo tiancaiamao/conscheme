@@ -8,6 +8,11 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 	case "display/1":
 		arg0 := ev(car(code), false, lexenv)
 		return Display(arg0)
+	case "not/1":
+		arg0 := ev(car(code), false, lexenv)
+		return not(arg0)
+	case "command-line/0":
+		return Command_line()
 	case "exit/1":
 		os.Exit(number_to_int(ev(car(code), false, lexenv)))
 	case "eq?/2":
@@ -18,9 +23,36 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 		}
 	case "unspecified/0":
 		return Void
+	case "string-ref/2":
+		arg0 := ev(car(code), false, lexenv);code = cdr(code)
+		arg1 := ev(car(code), false, lexenv)
+		return String_ref(arg0, arg1)
+	case "string-length/1":
+		arg0 := ev(car(code), false, lexenv)
+		return String_length(arg0)
+	case "string?/1":
+		arg0 := ev(car(code), false, lexenv)
+		return string_p(arg0)
+	case "greatest-fixnum/0":
+		return Make_fixnum(fixnum_max)
+	case "least-fixnum/0":
+		return Make_fixnum(fixnum_min)
+	case "=/2":
+		arg0 := ev(car(code), false, lexenv);code = cdr(code)
+		arg1 := ev(car(code), false, lexenv)
+		return number_equal(arg0, arg1)
+	case "number?/1":
+		arg0 := ev(car(code), false, lexenv)
+		return number_p(arg0)
 	case "symbol?/1":
 		arg0 := ev(car(code), false, lexenv)
 		return symbol_p(arg0)
+	case "cdr/1":
+		arg0 := ev(car(code), false, lexenv)
+		return cdr(arg0)
+	case "car/1":
+		arg0 := ev(car(code), false, lexenv)
+		return car(arg0)
 	case "cons/2":
 		arg0 := ev(car(code), false, lexenv);code = cdr(code)
 		arg1 := ev(car(code), false, lexenv)

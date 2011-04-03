@@ -33,6 +33,40 @@
 
 (define (null? x) (eq? x '()))
 
-(define (command-line)
-  ;; TODO:
-  '())
+(define (eqv? x y)
+  (or (eq? x y)
+      (if (and (number? x) (number? y))
+          (= x y)
+          #f)))
+
+(define (equal? x y)
+  (cond ((eqv? x y) #t)
+        ((and (string? x) (string? y))
+         (string=? x y))
+        ((and (pair? x) (pair? y))
+         (and (equal? (car x) (car y))
+              (equal? (cdr x) (cdr y))))
+        ((and (vector? x) (vector? y)
+              (= (vector-length x) (vector-length y)))
+         (let lp ((i (- (vector-length x) 1)))
+           (cond ((= i -1) #t)
+                 ((not (equal? (vector-ref x i) (vector-ref y i)))
+                  #f)
+                 (else (lp (- i 1))))))
+        (else #f)))
+
+(define (string=? x y)
+  (and (= (string-length x) (string-length y))
+       (let lp ((i (- (string-length x) 1)))
+         (cond ((= i -1) #t)
+               ((not (char=? (string-ref x i) (string-ref y i)))
+                #f)
+               (else (lp (- i 1)))))))
+
+;; XXX: takes an optional port
+(define (newline) (display "\n"))
+
+(define (for-each f l)
+  (cond ((not (null? l))
+         (f (car l))
+         (for-each f (cdr l)))))
