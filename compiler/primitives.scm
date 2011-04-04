@@ -101,15 +101,30 @@
   (display "\tpanic(fmt.Sprintf(\"Fell off the edge in evprim(): %s\",primop))\n" p)
   (display "}\n" p))
 
+;; Booleans
+
+(define-call boolean? "boolean_p" 1)
+(define-call not "not" 1)
+
 ;; Pairs
 
+(define-call pair? "pair_p" 1)
 (define-call cons "Cons" 2)
 (define-call car "car" 1)
 (define-call cdr "cdr" 1)
+(define-call length "Length" 1)
 
 ;; Symbols
 
 (define-call symbol? "symbol_p" 1)
+
+;; Characters
+
+(define-call char? "char_p" 1)
+
+;; Vectors
+
+(define-call vector? "vector_p" 1)
 
 ;; Numbers
 
@@ -128,18 +143,42 @@
       'greatest-fixnum/0
       'ERROR))
 
+
 ;; Strings
 
 (define-call string? "string_p" 1)
 (define-call string-length "String_length" 1)
 (define-call string-ref "String_ref" 2)
 
+(define-operation make-string/1
+   (list (string-append "return Make_string(" (argn 0) ",Make_char("
+                        (number->string (char->integer #\space)) "))")))
+(define-operation make-string/2 (normal-call "Make_string" 2))
+(define-primitive (make-string args)
+  (case (length args)
+    ((1) 'make-string/1)
+    ((2) 'make-string/2)
+    (else 'ERROR)))
+
+
+;; Ports
+
+;; (define-call port? "port_p" 1)
+
 ;; Misc
+
+;; (define-call procedure? "procedure_p" 1)
 
 (define-operation unspecified/0 (list "return Void"))
 (define-primitive (unspecified args)
   (if (= (length args) 0)
       'unspecified/0
+      'ERROR))
+
+(define-operation eof-object/0 (list "return Eof"))
+(define-primitive (eof-object args)
+  (if (= (length args) 0)
+      'eof-object/0
       'ERROR))
 
 (define-operation eq?/2
@@ -166,8 +205,6 @@
       'command-line/0
       'ERROR))
 
-(define-call not "not" 1)
-
 ;; I/O
 
 (define-operation display/1 (normal-call "Display" 1))
@@ -176,6 +213,15 @@
   (if (= (length args) 1)
       'display/1
       'ERROR))
+
+(define-operation write/1 (normal-call "Write" 1))
+(define-primitive (write args)
+  ;; TODO: the port argument. write in scheme instead
+  (if (= (length args) 1)
+      'write/1
+      'ERROR))
+
+
 
 ;;; A compiler pass
 

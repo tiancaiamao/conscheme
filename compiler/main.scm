@@ -32,7 +32,9 @@
 ;; See what happens...
 (cond-expand
  (guile (use-modules (ice-9 pretty-print)))
- (else (define (pretty-print x) (display x))))
+ (else (define (pretty-print x)
+         (write x)
+         (newline))))
 
 (define (compile)
   (let ((output-file "main.cso")
@@ -48,17 +50,33 @@
 
 (define (print . x) (for-each (lambda (x) (display x)) x) (newline))
 
+(define-macro (check expr arrow expect)
+    (list 'begin
+          (list 'pretty-print (list 'quote expr))
+          (list 'display (list 'quote arrow))
+          '(newline)
+          (let ((tmp (gensym))
+                (tmp2 (gensym)))
+            (list 'let* (list (list tmp expr)
+                              (list tmp2 expect))
+                  (list 'pretty-print tmp)
+                  (list 'if (list 'not (list 'equal? tmp tmp2))
+                        (list 'begin
+                              (list 'display "Wrong result! Expected:\n")
+                              (list 'pretty-print tmp2)))
+                  '(newline)))))
+
 (cond-expand
  (conscheme
   (print "conscheme running")
   (print "Some tests:")
   (print "command line: " (command-line))
-  (print (list '(least-fixnum) '=> (least-fixnum)))
-  (print (list '(greatest-fixnum) '=> (greatest-fixnum)))
-  (print (list '(= (string-length "a") 1) '=>
-               (= (string-length "a") 1)))
-  (print (list '(= 1 (string-length "a")) '=>
-               (= 1 (string-length "a")))))
+  (print "The fixnum range is " (least-fixnum) " - " (greatest-fixnum))
+
+  (check (string-length "a") => 1)
+  ;;(check (make-string 4 #\x) => "xxxx")
+  (check (string-length (make-string 4)) => 4)
+  )
  (else #F))
 
 (cond ((member "compile" (command-line))
@@ -68,17 +86,3 @@
       (else
        (display "Usage: main compile|genprim.\n")
        (exit 1)))
-
-
-;; xxx: only if requested on the command line
-
-
-;; (let ((output-file "main.cso")
-;;       (input-file "main.scm"))
-;;   (let ((code (primops (aconv (expand '(cons 1 (if #f #f)))))))
-;;     (pretty-print code)
-;;     (if (file-exists? output-file)
-;;         (delete-file output-file))
-;;     (call-with-port (open-file-output-port output-file)
-;;       (lambda (p)
-;;         (serialize-object code p)))))

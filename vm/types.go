@@ -23,7 +23,7 @@
 
 // All Scheme objects have type Obj. The two low bits in pointers are
 // used to get limited type tagging. Normally one would want the tag
-// '00' for fixnums, because it simplies arithmetic, but we have to
+// '00' for fixnums, because it simplifies arithmetic, but we have to
 // use '00' for heap-allocated objects, or else the GC will deallocate
 // all our objects.
 
@@ -83,8 +83,17 @@ const (
 	Void = Obj(unsafe.Pointer(uintptr(0x2f)))	// the unspecified value
 )
 
-const fixnum_max = int(^uint(0) >> (1 + fixnum_shift))
-const fixnum_min = -fixnum_max - 1
+const (
+	fixnum_max = int(^uint(0) >> (1 + fixnum_shift))
+	fixnum_min = -fixnum_max - 1
+)
+
+var fixnum_max_Int, fixnum_min_Int *big.Int
+
+func init() {
+	fixnum_max_Int = big.NewInt(int64(fixnum_max))
+	fixnum_min_Int = big.NewInt(int64(fixnum_min))
+}
 
 // Fixnums
 

@@ -5,12 +5,12 @@ import "fmt"
 import "os"
 func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 	switch primop {
+	case "write/1":
+		arg0 := ev(car(code), false, lexenv)
+		return Write(arg0)
 	case "display/1":
 		arg0 := ev(car(code), false, lexenv)
 		return Display(arg0)
-	case "not/1":
-		arg0 := ev(car(code), false, lexenv)
-		return not(arg0)
 	case "command-line/0":
 		return Command_line()
 	case "exit/1":
@@ -21,8 +21,16 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 		} else {
 			return False
 		}
+	case "eof-object/0":
+		return Eof
 	case "unspecified/0":
 		return Void
+	case "make-string/2":
+		arg0 := ev(car(code), false, lexenv);code = cdr(code)
+		arg1 := ev(car(code), false, lexenv)
+		return Make_string(arg0, arg1)
+	case "make-string/1":
+		return Make_string(ev(car(code), false, lexenv),Make_char(32))
 	case "string-ref/2":
 		arg0 := ev(car(code), false, lexenv);code = cdr(code)
 		arg1 := ev(car(code), false, lexenv)
@@ -44,9 +52,18 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 	case "number?/1":
 		arg0 := ev(car(code), false, lexenv)
 		return number_p(arg0)
+	case "vector?/1":
+		arg0 := ev(car(code), false, lexenv)
+		return vector_p(arg0)
+	case "char?/1":
+		arg0 := ev(car(code), false, lexenv)
+		return char_p(arg0)
 	case "symbol?/1":
 		arg0 := ev(car(code), false, lexenv)
 		return symbol_p(arg0)
+	case "length/1":
+		arg0 := ev(car(code), false, lexenv)
+		return Length(arg0)
 	case "cdr/1":
 		arg0 := ev(car(code), false, lexenv)
 		return cdr(arg0)
@@ -57,6 +74,15 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 		arg0 := ev(car(code), false, lexenv);code = cdr(code)
 		arg1 := ev(car(code), false, lexenv)
 		return Cons(arg0, arg1)
+	case "pair?/1":
+		arg0 := ev(car(code), false, lexenv)
+		return pair_p(arg0)
+	case "not/1":
+		arg0 := ev(car(code), false, lexenv)
+		return not(arg0)
+	case "boolean?/1":
+		arg0 := ev(car(code), false, lexenv)
+		return boolean_p(arg0)
 	default:
 		fmt.Fprintf(os.Stderr, "Please regenerate primitives.go\n")
 		panic(fmt.Sprintf("Unimplemented primitive: %s",primop))

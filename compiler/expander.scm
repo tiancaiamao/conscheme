@@ -182,6 +182,9 @@
           (else
            (list 'if (car arms) (lp (cdr arms)) #f)))))
 
+;; TODO: do
+;; TODO: quasiquote
+
 (define (formals-to-list x)
   (cond ((null? x) x)
         ((symbol? x) (list x))
