@@ -1,4 +1,5 @@
 // Copyright (C) 2011 Per Odlund <per.odlund@gmail.com>
+// Copyright (C) 2011 Göran Weinholt <goran@weinholt.se>
 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -100,8 +101,11 @@ func (d *Deserializer) ReadObject() Obj {
 	length := d.readInt()
 	switch tag {
 	case Integer:
-		var vv interface{} = length
-		return Obj(&vv)
+		if length.Cmp(fixnum_min_Int)<0 || length.Cmp(fixnum_max_Int)>0 {
+			var vv interface{} = length
+			return Obj(&vv)
+		}
+		return Make_fixnum(int(length.Int64()))
 	case Pair:
 		o1 := d.ReadObject()
 		o2 := d.ReadObject()
