@@ -11,6 +11,20 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 	case "display/1":
 		arg0 := ev(car(code), false, lexenv)
 		return Display(arg0)
+	case "$cell-set!/2":
+		v := ev(car(code), false, lexenv)
+		vv := (*v).(*[1]Obj)
+		vv[0] = ev(car(cdr(code)), false, lexenv)
+		return Void
+	case "$cell-ref/1":
+		v := ev(car(code), false, lexenv)
+		vv := (*v).(*[1]Obj)
+		return vv[0]
+	case "$make-cell/1":
+		var v [1]Obj
+		v[0] = ev(car(code), false, lexenv)
+		var vv interface{} = &v
+		return Obj(&vv)
 	case "command-line/0":
 		return Command_line()
 	case "exit/1":

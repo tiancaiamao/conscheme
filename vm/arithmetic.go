@@ -256,6 +256,7 @@ func number_divide(x,y Obj) Obj {
 		i1 := int(uintptr(unsafe.Pointer(x))) >> fixnum_shift
 		i2 := int(uintptr(unsafe.Pointer(y))) >> fixnum_shift
 		r := i1 / i2
+		// XXX: divmod. check if mod = 0
 		if r * i2 == i1 && r > fixnum_min && r < fixnum_max {
 			return Make_fixnum(r)
 		} else {

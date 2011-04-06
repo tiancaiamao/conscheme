@@ -61,6 +61,15 @@ type Procedure struct {
 	body Obj
 }
 
+func procedure_p(x Obj) Obj {
+	if is_immediate(x) { return False }
+	switch _ := (*x).(type) {
+	case Procedure:
+		return True
+	}
+	return False
+}
+
 // Top-level environment. Should there be one of these per process, or
 // should there just be a lock around it? In a bytecode VM we can
 // actually skip the hashing and do the "hashtable lookup" at compile
@@ -69,23 +78,26 @@ var env map[string]Obj = make(map[string]Obj)
 
 func lookup(name Obj, lexenv map[string]Obj) Obj {
 	sname := (*name).(string)
+	// fmt.Printf("ref looking up %s in %v\n", sname,lexenv)
 	if lexenv != nil {
 		if binding, is_bound := lexenv[sname]; is_bound {
+			// fmt.Printf("ref found %s => ", sname)
+			// Write(binding); fmt.Printf("\n")
 			return binding
 		}
+		// fmt.Printf("ref didn't find %s\n", sname)
 	}
+	// fmt.Printf("ref looking up %s in global %v\n", sname,env)
 	if binding, is_bound := env[sname]; is_bound {
+		// fmt.Printf("ref found in global %v\n", sname)
 		return binding
 	}
 	panic(fmt.Sprintf("unbound variable: %s",sname))
 }
 
-func lambda_apply(proc Procedure, args []Obj, lexenv map[string]Obj) Obj {
-	// XXX: This actually assumes there's a pass that transforms
-	// mutable variables into cells
-	newenv := make(map[string]Obj)
-	for k,v := range lexenv { newenv[k] = v }
+func lambda_apply(proc Procedure, args []Obj, _ map[string]Obj) Obj {
 	// Extend newenv using formals + args
+	newenv := proc.lexenv
 	if len(args) < proc.required {
 		panic("Too few arguments to procedure")
 	}
@@ -105,6 +117,7 @@ func lambda_apply(proc Procedure, args []Obj, lexenv map[string]Obj) Obj {
 		case *[2]Obj:
 			name := (*f[0]).(string) // car
 			newenv[name] = args[i]
+			// fmt.Printf("defined %s in %v\n", name,newenv)
 			formals = f[1] // cdr
 		default:
 			// Should never happen
@@ -163,7 +176,10 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
 		var closure Procedure
 		code = cdr(code); closure.formals = car(code)
 		code = cdr(code); closure.body = car(code)
-		closure.lexenv = lexenv
+		closure.lexenv = make(map[string]Obj)
+		if lexenv != nil  {
+			for k,v := range lexenv { closure.lexenv[k] = v }
+		}
 		closure.name = "unnamed"
 		closure.apply = lambda_apply
 		closure.required = 0
@@ -184,13 +200,20 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
 		sname := (*name).(string)
 		value := ev(car(code), true, lexenv)
 		if lexenv != nil {
-			if _, is_bound := lexenv[sname]; is_bound {
+			// fmt.Printf("set! looking up %s in %v\n", sname,lexenv)
+			if binding, is_bound := lexenv[sname]; is_bound {
+				// fmt.Printf("set! did find %s: ",sname)
+				Write(binding); fmt.Printf("\n")
 				lexenv[sname] = value
 				return Void
 			}
+			// fmt.Printf("set! didn't find %s\n",sname)
 		}
-		env[sname] = value
-		return Void
+		if _, is_bound := env[sname]; is_bound {
+			env[sname] = value
+			return Void
+		}
+		panic(fmt.Sprintf("attempt to mutate undefined variable: %s", sname))
 	case Quote:
 		return car(cdr(code))
 
@@ -203,7 +226,7 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
 		for i := 0; code != Eol; i, code = i+1, cdr(code) {
 			args[i] = ev(car(code), false, lexenv)
 		}
-		return ap(fun, args, lexenv)
+		return ap(fun, args)
 	case _Primcall:
 		code = cdr(code)
 		primop := (*car(code)).(string)
@@ -217,10 +240,13 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
 	panic("One of the eval cases did not return")
 }
 
-func ap(oproc Obj, args []Obj, lexenv map[string]Obj) Obj {
+func ap(oproc Obj, args []Obj) Obj {
 	// oproc should be a Procedure.
+	if is_immediate(oproc) {
+		panic(fmt.Sprintf("bad type to apply: %v",oproc))
+	}
 	proc := (*oproc).(Procedure)
-	return proc.apply(proc, args, lexenv)
+	return proc.apply(proc, args, nil)
 }
 
 // Runs the simple language emitted by the "compiler"

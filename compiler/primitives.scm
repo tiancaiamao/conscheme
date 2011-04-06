@@ -212,6 +212,37 @@
       'command-line/0
       'ERROR))
 
+;; Cells, internal to the compiler, used for mutation
+
+(define-operation $make-cell/1
+   (list "var v [1]Obj"
+         (string-append "v[0] = " (argn 0))
+         "var vv interface{} = &v"
+         "return Obj(&vv)"))
+(define-primitive ($make-cell args)
+   (if (= (length args) 1)
+       '$make-cell/1
+       'ERROR))
+
+(define-operation $cell-ref/1
+   (list (string-append "v := " (argn 0))
+         "vv := (*v).(*[1]Obj)"
+         "return vv[0]"))
+(define-primitive ($cell-ref args)
+   (if (= (length args) 1)
+       '$cell-ref/1
+       'ERROR))
+
+(define-operation $cell-set!/2
+   (list (string-append "v := " (argn 0))
+         "vv := (*v).(*[1]Obj)"
+         (string-append "vv[0] = " (argn 1))
+         "return Void"))
+(define-primitive ($cell-set! args)
+   (if (= (length args) 2)
+       '$cell-set!/2
+       'ERROR))
+
 ;; I/O
 
 (define-operation display/1 (normal-call "Display" 1))

@@ -202,7 +202,9 @@
 
 ;;; Characters
 
-;; char=? char<? char>? char<=? char>=?
+(define (char=? x y) (= (char->integer x) (char->integer y)))
+
+;; char<? char>? char<=? char>=?
 ;; char-ci=? char-ci<? char-ci>? char-ci<=? char-ci>=?
 ;; char-alphabetic? char-numeric? char-whitespace?
 ;; char-upper-case? char-lower-case?
