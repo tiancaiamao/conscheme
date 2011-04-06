@@ -60,7 +60,8 @@
         ((begin)
          (cons 'begin (map (lambda (x) (aconv* x env)) (cdr x))))
         ((set!)
-         (list 'set! (set!-name x) (aconv* (set!-expression x) env)))
+         (list 'set! (aconv-lookup (set!-name x) env)
+               (aconv* (set!-expression x) env)))
         (else
          (map (lambda (x) (aconv* x env)) x)))))
 
