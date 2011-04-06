@@ -45,6 +45,18 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 		return Make_fixnum(fixnum_max)
 	case "least-fixnum/0":
 		return Make_fixnum(fixnum_min)
+	case "$-/2":
+		arg0 := ev(car(code), false, lexenv);code = cdr(code)
+		arg1 := ev(car(code), false, lexenv)
+		return number_subtract(arg0, arg1)
+	case "$//2":
+		arg0 := ev(car(code), false, lexenv);code = cdr(code)
+		arg1 := ev(car(code), false, lexenv)
+		return number_divide(arg0, arg1)
+	case "$+/2":
+		arg0 := ev(car(code), false, lexenv);code = cdr(code)
+		arg1 := ev(car(code), false, lexenv)
+		return number_add(arg0, arg1)
 	case "$number->string/2":
 		arg0 := ev(car(code), false, lexenv);code = cdr(code)
 		arg1 := ev(car(code), false, lexenv)

@@ -73,6 +73,10 @@ const char_shift = 4
 // The type of all Scheme objects.
 type Obj *interface{}
 
+func wrap(x interface{}) Obj {
+	return Obj(&x)
+}
+
 // Constants.
 const (
 	False = Obj(unsafe.Pointer(uintptr((0 << bool_shift) | bool_tag)))
@@ -343,10 +347,9 @@ func Symbol_to_string(x Obj) Obj {
 
 func Obj_display(x Obj, p io.Writer, write Obj) {
 	switch {
-	case fixnum_p(x) != False:
-		fmt.Fprintf(p, "%d", fixnum_to_int(x))
-	case bignum_p(x) != False:
-		fmt.Fprintf(p, "%d", *x)
+	case number_p(x) != False:
+		str := string((*_number_to_string(x,Make_fixnum(10))).([]int))
+		fmt.Fprintf(p, "%v", str)
 	case char_p(x) != False:
 		if write != False {
 			fmt.Fprintf(p, "#\\")

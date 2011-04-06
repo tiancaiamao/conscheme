@@ -68,7 +68,22 @@
 (define (even? x)
   (zero? (modulo x 2)))
 
-;; max min + * - /
+;; max min
+
+(define (+ x y) ($+ x y))
+;; *
+(define (- x y) ($- x y))
+(define (/ x y) ($/ x y))
+
+;; (define (+ . rest)
+;;   ;; wrapper around $+
+;;   (let lp ((rest rest)
+;;            (ret 0))
+;;     (cond ((null? rest)
+;;            ret)
+;;           (else
+;;            (lp (cdr rest)
+;;                ($+ ret (car rest)))))))
 
 (define (abs x)
   (if (negative? x)

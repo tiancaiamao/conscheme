@@ -76,6 +76,11 @@
   (check (string-length "a") => 1)
   ;;(check (make-string 4 #\x) => "xxxx")
   (check (string-length (make-string 4)) => 4)
+  (check (+ 1 2) => 3)
+  (check (+ 1 -2) => -1)
+  (check (+ (greatest-fixnum) (least-fixnum)) => -1)
+  (check (/ 1 3) => 1/3)
+  (check (- 1 3) => -2)
   )
  (else #F))
 

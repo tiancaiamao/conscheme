@@ -125,6 +125,8 @@ func number_p(x Obj) Obj {
 	switch v := (*x).(type) {
 	case *big.Int:
 		return True
+	case *big.Rat:
+		return True
 	}
 	return False
 }
@@ -150,6 +152,134 @@ func number_equal(x,y Obj) Obj {
 		switch vy := (*y).(type) {
 		case *big.Int:
 			return Make_boolean(vx.Cmp(vy) == 0)
+		case *big.Rat:
+			return number_equal(y,x)
+		default:
+			panic("bad type")
+		}
+	case *big.Rat:
+		// rationals should always have been converted into
+		// other types if the denominator is one
+		if yfx { return False }
+		switch vy := (*y).(type) {
+		case *big.Int:
+			return False
+		case *big.Rat:
+			return Make_boolean(vx.Cmp(vy) == 0)
+		default:
+			panic("bad type")
+		}
+	}
+	panic("bad type")
+}
+
+func number_add(x,y Obj) Obj {
+	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
+	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	if xfx && yfx {
+		i1 := uintptr(unsafe.Pointer(x))
+		i2 := uintptr(unsafe.Pointer(y))
+		r := (int(i1) >> fixnum_shift) + (int(i2) >> fixnum_shift)
+		if r > fixnum_min && r < fixnum_max {
+			return Make_fixnum(r)
+		} else {
+			return wrap(big.NewInt(int64(r)))
+		}
+	}
+
+	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
+		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
+		panic("bad type")
+	}
+
+	if xfx { return number_add(y,x) }
+
+	switch vx := (*x).(type) {
+	case *big.Int:
+		var z *big.Int = big.NewInt(0)
+		if yfx {
+			vy := big.NewInt(int64(fixnum_to_int(y)))
+			return wrap(z.Add(vx,vy))
+		}
+		switch vy := (*y).(type) {
+		case *big.Int:
+			return wrap(z.Add(vx,vy))
+		default:
+			panic("bad type")
+		}
+	}
+	panic("bad type")
+}
+
+func number_subtract(x,y Obj) Obj {
+	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
+	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	if xfx && yfx {
+		i1 := uintptr(unsafe.Pointer(x))
+		i2 := uintptr(unsafe.Pointer(y))
+		r := (int(i1) >> fixnum_shift) - (int(i2) >> fixnum_shift)
+		if r > fixnum_min && r < fixnum_max {
+			return Make_fixnum(r)
+		} else {
+			return wrap(big.NewInt(int64(r)))
+		}
+	}
+
+	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
+		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
+		panic("bad type")
+	}
+
+	if xfx { return number_subtract(y,x) }
+
+	switch vx := (*x).(type) {
+	case *big.Int:
+		var z *big.Int = big.NewInt(0)
+		if yfx {
+			vy := big.NewInt(int64(fixnum_to_int(y)))
+			return wrap(z.Sub(vx,vy))
+		}
+		switch vy := (*y).(type) {
+		case *big.Int:
+			return wrap(z.Sub(vx,vy))
+		default:
+			panic("bad type")
+		}
+	}
+	panic("bad type")
+}
+
+func number_divide(x,y Obj) Obj {
+	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
+	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	if xfx && yfx {
+		i1 := int(uintptr(unsafe.Pointer(x))) >> fixnum_shift
+		i2 := int(uintptr(unsafe.Pointer(y))) >> fixnum_shift
+		r := i1 / i2
+		if r * i2 == i1 && r > fixnum_min && r < fixnum_max {
+			return Make_fixnum(r)
+		} else {
+			return wrap(big.NewRat(int64(i1),int64(i2)))
+		}
+	}
+
+	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
+		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
+		panic("bad type")
+	}
+
+	if xfx { return number_divide(y,x) }
+
+	switch vx := (*x).(type) {
+	case *big.Int:
+		var z *big.Int = big.NewInt(0)
+		if yfx {
+			vy := big.NewInt(int64(fixnum_to_int(y)))
+			return wrap(z.Add(vx,vy))
+		}
+		switch vy := (*y).(type) {
+		case *big.Int:
+			return wrap(z.Add(vx,vy))
 		default:
 			panic("bad type")
 		}
@@ -174,6 +304,9 @@ func _number_to_string(num Obj, radix Obj) Obj {
 	switch v := (*num).(type) {
 	case *big.Int:
 		return String_string(fmt.Sprintf(format, v))
+	case *big.Rat:
+		return String_string(fmt.Sprintf(format + "/" + format,
+			v.Num(), v.Denom()))
 	}
 
 	panic("number->string needs numbers")
