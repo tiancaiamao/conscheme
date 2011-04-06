@@ -23,7 +23,35 @@
 
 package conscheme
 
-import "os"
+import (
+	"big"
+	"fmt"
+	"os"
+)
+
+// Numbers
+
+func _number_to_string(num Obj, radix Obj) Obj {
+	var format string
+
+	switch number_to_int(radix) {
+	case 2: format = "%b"
+	case 8: format = "%o"
+	case 10: format = "%d"
+	default: format = "%x"
+	}
+
+	if fixnum_p(num) != False {
+		return String_string(fmt.Sprintf(format, fixnum_to_int(num)))
+	}
+
+	switch v := (*num).(type) {
+	case *big.Int:
+		return String_string(fmt.Sprintf(format, v))
+	}
+
+	panic("number->string needs numbers")
+}
 
 // Misc
 

@@ -51,20 +51,20 @@
 (define (print . x) (for-each (lambda (x) (display x)) x) (newline))
 
 (define-macro (check expr arrow expect)
-    (list 'begin
-          (list 'pretty-print (list 'quote expr))
-          (list 'display (list 'quote arrow))
-          '(newline)
-          (let ((tmp (gensym))
-                (tmp2 (gensym)))
-            (list 'let* (list (list tmp expr)
-                              (list tmp2 expect))
-                  (list 'pretty-print tmp)
-                  (list 'if (list 'not (list 'equal? tmp tmp2))
-                        (list 'begin
-                              (list 'display "Wrong result! Expected:\n")
-                              (list 'pretty-print tmp2)))
-                  '(newline)))))
+  (list 'begin
+        (list 'pretty-print (list 'quote expr))
+        (list 'display (list 'quote arrow))
+        '(newline)
+        (let ((tmp (gensym))
+              (tmp2 (gensym)))
+          (list 'let* (list (list tmp expr)
+                            (list tmp2 expect))
+                (list 'pretty-print tmp)
+                (list 'if (list 'not (list 'equal? tmp tmp2))
+                      (list 'begin
+                            (list 'display "Wrong result! Expected:\n")
+                            (list 'pretty-print tmp2)))
+                '(newline)))))
 
 (cond-expand
  (conscheme
