@@ -47,7 +47,6 @@
 package conscheme
 
 import (
-	"big"
 	"fmt"
 	"io"
 	"os"
@@ -82,48 +81,6 @@ const (
 	Eof = Obj(unsafe.Pointer(uintptr(0x1f))) // end of file object
 	Void = Obj(unsafe.Pointer(uintptr(0x2f)))	// the unspecified value
 )
-
-const (
-	fixnum_max = int(^uint(0) >> (1 + fixnum_shift))
-	fixnum_min = -fixnum_max - 1
-)
-
-var fixnum_max_Int, fixnum_min_Int *big.Int
-
-func init() {
-	fixnum_max_Int = big.NewInt(int64(fixnum_max))
-	fixnum_min_Int = big.NewInt(int64(fixnum_min))
-}
-
-// Fixnums
-
-func fixnum_p(x Obj) Obj {
-	return Make_boolean((uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag)
-}
-
-func Make_fixnum(x int) Obj {
-	// XXX: assumes x fits in a fixnum
-	return Obj(unsafe.Pointer(uintptr((x << fixnum_shift) | fixnum_tag)))
-}
-
-func fixnum_to_int(x Obj) int {
-	return int(uintptr(unsafe.Pointer(x))) >> fixnum_shift
-}
-
-func fixnum_add(fx1,fx2 Obj) Obj {
-	i1 := uintptr(unsafe.Pointer(fx1))
-	i2 := uintptr(unsafe.Pointer(fx2))
-	if (i1 & fixnum_mask) != fixnum_tag || (i2 & fixnum_mask) != fixnum_tag {
-		panic("bad type")
-	}
-	r := i1 + i2
-	// TODO: how should we do this?
-	// if r < fixnum_min || r > fixnum_max {
-	// 	panic("result not representable")
-	// }
-
-	return Obj(unsafe.Pointer(uintptr(r - fixnum_tag)))
-}
 
 // Chars
 
@@ -221,7 +178,6 @@ func Length(x Obj) Obj {
 	}
 	return make_number(l)
 }
-
 
 // Vectors
 
@@ -330,93 +286,6 @@ func String_ref(x, idx Obj) Obj {
 	}
 	v := (*x).([]int)
 	return Make_char(v[fixnum_to_int(idx)])
-}
-
-
-// Bignums
-
-func make_bignum(x int64) Obj {
-	var vv interface{} = big.NewInt(x)
-	return Obj(&vv)
-}
-
-func bignum_p(x Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { return False }
-
-	switch v := (*x).(type) {
-	case *big.Int:
-		return True
-	}
-	return False
-}
-
-// Numbers
-
-func make_number(x int) Obj {
-	v := Make_fixnum(x)
-	if fixnum_to_int(v) != x {
-		return make_bignum(int64(x))
-	}
-	return v
-}
-
-func number_to_int(x Obj) int {
-	if (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag {
-		return fixnum_to_int(x)
-	}
-
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
-		panic("bad type")
-	}
-
-	switch v := (*x).(type) {
-	case *big.Int:
-		// XXX:
-		return int(v.Int64())
-	}
-	panic("bad type")
-}
-
-func number_p(x Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag {
-		return True
-	}
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
-		return False
-	}
-	switch v := (*x).(type) {
-	case *big.Int:
-		return True
-	}
-	return False
-}
-
-func number_equal(x,y Obj) Obj {
-	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
-	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
-	if xfx && yfx {	return Make_boolean(x == y) }
-
-	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
-		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
-		panic("bad type")
-	}
-
-	if xfx { return number_equal(y,x) }
-
-	switch vx := (*x).(type) {
-	case *big.Int:
-		if yfx {
-			vy := big.NewInt(int64(fixnum_to_int(y)))
-			return Make_boolean(vx.Cmp(vy) == 0)
-		}
-		switch vy := (*y).(type) {
-		case *big.Int:
-			return Make_boolean(vx.Cmp(vy) == 0)
-		default:
-			panic("bad type")
-		}
-	}
-	panic("bad type")
 }
 
 // Symbols
