@@ -84,7 +84,18 @@
 ;; make-rectangular make-polar
 ;; real-part imag-part magnitude angle
 ;; exact->inexact inexact->exact
-;; number->string string->number
+
+(define (number->string num . rest)
+  (cond ((null? rest)
+         ($number->string num 10))
+        ((null? (cdr rest))
+         (if (memv (car rest) '(2 8 10 16))
+             ($number->string num (car rest))
+             (error 'number->string "Unknown radix" (car rest))))
+        (else
+         (error 'number->string "Too many arguments" num rest))))
+
+;; string->number
 
 ;;; Pairs
 
