@@ -113,6 +113,8 @@
 (define-call car "car" 1)
 (define-call cdr "cdr" 1)
 (define-call length "Length" 1)
+(define-call set-car! "set_car_ex" 2)
+(define-call set-cdr! "set_cdr_ex" 2)
 
 ;; Symbols
 
@@ -121,6 +123,7 @@
 ;; Characters
 
 (define-call char? "char_p" 1)
+(define-call char->integer "char_to_integer" 1)
 
 ;; Vectors
 

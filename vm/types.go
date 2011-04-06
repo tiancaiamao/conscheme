@@ -77,6 +77,10 @@ func wrap(x interface{}) Obj {
 	return Obj(&x)
 }
 
+func is_immediate(x Obj) bool {
+	return (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag
+}
+
 // Constants.
 const (
 	False = Obj(unsafe.Pointer(uintptr((0 << bool_shift) | bool_tag)))
@@ -98,6 +102,14 @@ func Make_char(x int) Obj {
 
 func char_to_int(x Obj) int {
 	return int(uintptr(unsafe.Pointer(x))) >> char_shift
+}
+
+func char_to_integer(x Obj) Obj {
+	if (uintptr(unsafe.Pointer(x)) & char_mask) != char_tag { panic("Bad type") }
+
+	ch := uintptr(unsafe.Pointer(x)) >> char_shift
+	fx := (ch << fixnum_shift) | fixnum_tag
+	return Obj(unsafe.Pointer(uintptr(fx)))
 }
 
 // Booleans
@@ -407,6 +419,8 @@ func Obj_display(x Obj, p io.Writer, write Obj) {
 		fmt.Fprintf(p, "#<eof>")
 	case x == Void:
 		fmt.Fprintf(p, "#<void>")
+	// case procedure_p(x) != False:
+	// 	fmt.Fprintf(p, "#<procedure>")
 	// Unknown types
 	case uintptr(unsafe.Pointer(x)) & heap_mask == heap_tag:
 		fmt.Fprintf(p, "#<heapobj %d>", *x)
