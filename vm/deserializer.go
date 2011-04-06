@@ -39,6 +39,7 @@ const (
 	Symbol	= 5
 	Boolean	= 6
 	Char	= 7
+	Rational = 8
 )
 
 const Version = 1
@@ -106,6 +107,9 @@ func (d *Deserializer) ReadObject() Obj {
 			return Obj(&vv)
 		}
 		return Make_fixnum(int(length.Int64()))
+	case Rational:
+		i := big.NewRat(1,1)
+		return wrap(i.SetFrac(length, d.readInt()))
 	case Pair:
 		o1 := d.ReadObject()
 		o2 := d.ReadObject()

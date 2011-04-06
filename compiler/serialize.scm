@@ -49,6 +49,8 @@
 
 (define TYPE-CHAR 7)
 
+(define TYPE-RATIONAL 8)
+
 ;; Somewhat inefficient representation of integers
 (define (write-integer t p)
   (put-u8 p (if (negative? t) 1 0))
@@ -74,9 +76,17 @@
          (write-length 2 p)
          (serialize (car x) p)
          (serialize (cdr x) p))
-        ((and (number? x) (exact? x))
-         (write-type TYPE-INTEGER p)
-         (write-integer x p))       
+        ((number? x)
+         (cond
+           ((and (exact? x) (= (denominator x) 1))
+            (write-type TYPE-INTEGER p)
+            (write-integer x p))
+           ((and (exact? x) (not (= (denominator x) 1)))
+            (write-type TYPE-RATIONAL p)
+            (write-integer (numerator x) p)
+            (write-integer (denominator x) p))
+           (else
+            (error 'serialize "Can not serialize this number" x))))
         ((null? x)
          (write-type TYPE-NULL p)
          (write-length 0 p))
