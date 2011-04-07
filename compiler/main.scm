@@ -81,6 +81,7 @@
   (check (+ 1 -2) => -1)
   (check (+ (greatest-fixnum) (least-fixnum)) => -1)
   (check (/ 1 3) => 1/3)
+  (check (/ -4 2) => -2)
   (check (- 1 3) => -2))
  (else #F))
 

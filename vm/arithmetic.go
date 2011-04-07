@@ -255,9 +255,10 @@ func number_divide(x,y Obj) Obj {
 	if xfx && yfx {
 		i1 := int(uintptr(unsafe.Pointer(x))) >> fixnum_shift
 		i2 := int(uintptr(unsafe.Pointer(y))) >> fixnum_shift
-		r := i1 / i2
-		// XXX: divmod. check if mod = 0
-		if r * i2 == i1 && r > fixnum_min && r < fixnum_max {
+		// A good optimizer will combine the div and mod into
+		// one instruction.
+		r, m := i1 / i2, i1 % i2
+		if m == 0 && r > fixnum_min && r < fixnum_max {
 			return Make_fixnum(r)
 		} else {
 			return wrap(big.NewRat(int64(i1),int64(i2)))
