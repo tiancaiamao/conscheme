@@ -82,7 +82,14 @@
   (check (+ (greatest-fixnum) (least-fixnum)) => -1)
   (check (/ 1 3) => 1/3)
   (check (/ -4 2) => -2)
-  (check (- 1 3) => -2))
+  (check (- 1 3) => -2)
+
+  (print "current input port: " (current-input-port))
+  (print "current output port: " (current-output-port))
+  (check (input-port? (current-input-port)) => #t)
+  (check (input-port? (current-output-port)) => #f)
+  (check (output-port? (current-input-port)) => #f)
+  (check (output-port? (current-output-port)) => #t))
  (else #F))
 
 (cond ((member "compile" (command-line))

@@ -42,6 +42,7 @@
 // []int        string
 // *[2]Obj      pair
 // *big.Int     bignum
+// *big.Rat     ratnum
 // string       symbol
 
 package conscheme
@@ -110,6 +111,14 @@ func char_to_integer(x Obj) Obj {
 	ch := uintptr(unsafe.Pointer(x)) >> char_shift
 	fx := (ch << fixnum_shift) | fixnum_tag
 	return Obj(unsafe.Pointer(uintptr(fx)))
+}
+
+func integer_to_char(c Obj) Obj {
+	fx := number_to_int(c)
+	if (fx >= 0 && fx <= 0xd7ff) || (fx >= 0xe000 && fx <= 0x10ffff) {
+		return Make_char(fx)
+	}
+	panic("codepoint is outside the unicode range")
 }
 
 // Booleans

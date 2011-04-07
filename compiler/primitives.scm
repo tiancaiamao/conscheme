@@ -124,6 +124,7 @@
 
 (define-call char? "char_p" 1)
 (define-call char->integer "char_to_integer" 1)
+(define-call integer->char "integer_to_char" 1)
 
 ;; Vectors
 
@@ -245,21 +246,31 @@
 
 ;; I/O
 
-(define-operation display/1 (normal-call "Display" 1))
-(define-primitive (display args)
+(define-operation $display/1 (normal-call "Display" 1))
+(define-primitive ($display args)
   ;; TODO: display with the port argument. write display in scheme instead
   (if (= (length args) 1)
-      'display/1
+      '$display/1
       'ERROR))
 
-(define-operation write/1 (normal-call "Write" 1))
-(define-primitive (write args)
+(define-operation $write/1 (normal-call "Write" 1))
+(define-primitive ($write args)
   ;; TODO: the port argument. write in scheme instead
   (if (= (length args) 1)
-      'write/1
+      '$write/1
       'ERROR))
 
+(define-call input-port? "input_port_p" 1)
+(define-call output-port? "output_port_p" 1)
+(define-call current-input-port "current_input_port" 0)
+(define-call current-output-port "current_output_port" 0)
 
+(define-call $read-char "_read_char" 1)
+(define-call $write-char "_write_char" 2)
+
+(define-call get-u8 "get_u8" 1)
+(define-call put-u8 "put_u8" 2)
+(define-call lookahead-u8 "lookahead_u8" 1)
 
 ;;; A compiler pass
 
@@ -275,8 +286,8 @@
            (pretty-print (cons name args) (current-error-port))
            (newline (current-error-port))
            (primops (list 'begin (cons 'begin args)
-                          (list 'error (list 'quote "Wrong number of arguments")
-                                (list 'quote name)))))
+                          (list 'error (list 'quote name)
+                                (list 'quote "Wrong number of arguments")))))
           (else
            (cons '$primcall (cons call args))))))
 

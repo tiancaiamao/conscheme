@@ -5,10 +5,37 @@ import "fmt"
 import "os"
 func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 	switch primop {
-	case "write/1":
+	case "lookahead-u8/1":
+		arg0 := ev(car(code), false, lexenv)
+		return lookahead_u8(arg0)
+	case "put-u8/2":
+		arg0 := ev(car(code), false, lexenv);code = cdr(code)
+		arg1 := ev(car(code), false, lexenv)
+		return put_u8(arg0, arg1)
+	case "get-u8/1":
+		arg0 := ev(car(code), false, lexenv)
+		return get_u8(arg0)
+	case "$write-char/2":
+		arg0 := ev(car(code), false, lexenv);code = cdr(code)
+		arg1 := ev(car(code), false, lexenv)
+		return _write_char(arg0, arg1)
+	case "$read-char/1":
+		arg0 := ev(car(code), false, lexenv)
+		return _read_char(arg0)
+	case "current-output-port/0":
+		return current_output_port()
+	case "current-input-port/0":
+		return current_input_port()
+	case "output-port?/1":
+		arg0 := ev(car(code), false, lexenv)
+		return output_port_p(arg0)
+	case "input-port?/1":
+		arg0 := ev(car(code), false, lexenv)
+		return input_port_p(arg0)
+	case "$write/1":
 		arg0 := ev(car(code), false, lexenv)
 		return Write(arg0)
-	case "display/1":
+	case "$display/1":
 		arg0 := ev(car(code), false, lexenv)
 		return Display(arg0)
 	case "$cell-set!/2":
@@ -85,6 +112,9 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 	case "vector?/1":
 		arg0 := ev(car(code), false, lexenv)
 		return vector_p(arg0)
+	case "integer->char/1":
+		arg0 := ev(car(code), false, lexenv)
+		return integer_to_char(arg0)
 	case "char->integer/1":
 		arg0 := ev(car(code), false, lexenv)
 		return char_to_integer(arg0)

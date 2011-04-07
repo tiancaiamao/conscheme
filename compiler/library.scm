@@ -255,28 +255,60 @@
 
 ;; call-with-input-file
 ;; call-with-output-file
-;; input-port? output-port?
-;; current-input-port current-output-port
+
 ;; with-input-from-file wwith-output-to-file
 ;; open-input-file open-output-file
 ;; close-input-file close-output-file
 ;; read
-;; read-char
+
+(define (read-char . rest)
+  (if (null? rest)
+      ($read-char (current-input-port))
+      ($read-char (car rest))))
+
 ;; peek-char
 
 (define (eof-object? x) (eq? x (eof-object)))
 
 ;; char-ready?
 
-;; write
-;; display
+;; TODO: write these in scheme and handle the port argument
+(define (write obj . x)
+  (if (null? x)
+      ($write obj)
+      ($write obj #;(car x))))
+
+(define (display obj . x)
+  (if (null? x)
+      ($display obj)
+      ($display obj #;(car x))))
+
 
 (define (newline . x)
   (if (null? x)
-      (display "\n")
-      (display "\n" (car x))))
+      (write-char #\newline)
+      (write-char #\newline (car x))))
+
+(define (write-char c . rest)
+  (if (null? rest)
+      ($write-char c (current-output-port))
+      ($write-char c (car rest))))
 
 ;; write-char
 
 ;; load
 ;; transcript-on transcript-off
+
+;;; Misc
+
+(define (error who why . irritants)
+  (display "Error from ")
+  (display who)
+  (display ": ")
+  (display why)
+  (newline)
+  (display "List of irrantants: ")
+  (display irritants)
+  (newline)
+  ;; XXX: should tie in with some exception handling stuff
+  (exit 1))
