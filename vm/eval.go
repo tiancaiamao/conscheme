@@ -97,7 +97,9 @@ func lookup(name Obj, lexenv map[string]Obj) Obj {
 
 func lambda_apply(proc Procedure, args []Obj, _ map[string]Obj) Obj {
 	// Extend newenv using formals + args
-	newenv := proc.lexenv
+	newenv := make(map[string]Obj)
+	for k,v := range proc.lexenv { newenv[k] = v }
+
 	if len(args) < proc.required {
 		panic("Too few arguments to procedure")
 	}
@@ -143,6 +145,7 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
 	// fmt.Printf("eval: ")
 	// Write(code)
 	// fmt.Printf("\n")
+
 	if symbol_p(code) != False {
 		return lookup(code, lexenv)
 	}
@@ -176,10 +179,7 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
 		var closure Procedure
 		code = cdr(code); closure.formals = car(code)
 		code = cdr(code); closure.body = car(code)
-		closure.lexenv = make(map[string]Obj)
-		if lexenv != nil  {
-			for k,v := range lexenv { closure.lexenv[k] = v }
-		}
+		closure.lexenv = lexenv
 		closure.name = "unnamed"
 		closure.apply = lambda_apply
 		closure.required = 0
