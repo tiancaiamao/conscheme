@@ -143,7 +143,7 @@
                        (cond ((eq? (car c) 'else)
                               c)
                              (else
-                              (list (list 'memv (gensym) (list 'quote (car c)))
+                              (list (list 'memv tmp (list 'quote (car c)))
                                     (cadr c)))))
                      cases)))))
 
