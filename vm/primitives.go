@@ -72,6 +72,11 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 		return Make_string(arg0, arg1)
 	case "make-string/1":
 		return Make_string(ev(car(code), false, lexenv),Make_char(32))
+	case "string-set!/3":
+		arg0 := ev(car(code), false, lexenv);code = cdr(code)
+		arg1 := ev(car(code), false, lexenv);code = cdr(code)
+		arg2 := ev(car(code), false, lexenv)
+		return String_set_ex(arg0, arg1, arg2)
 	case "string-ref/2":
 		arg0 := ev(car(code), false, lexenv);code = cdr(code)
 		arg1 := ev(car(code), false, lexenv)
@@ -121,6 +126,12 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 	case "char?/1":
 		arg0 := ev(car(code), false, lexenv)
 		return char_p(arg0)
+	case "string->symbol/1":
+		arg0 := ev(car(code), false, lexenv)
+		return String_to_symbol(arg0)
+	case "symbol->string/1":
+		arg0 := ev(car(code), false, lexenv)
+		return Symbol_to_string(arg0)
 	case "symbol?/1":
 		arg0 := ev(car(code), false, lexenv)
 		return symbol_p(arg0)

@@ -119,6 +119,8 @@
 ;; Symbols
 
 (define-call symbol? "symbol_p" 1)
+(define-call symbol->string "Symbol_to_string" 1)
+(define-call string->symbol "String_to_symbol" 1)
 
 ;; Characters
 
@@ -157,6 +159,7 @@
 (define-call string? "string_p" 1)
 (define-call string-length "String_length" 1)
 (define-call string-ref "String_ref" 2)
+(define-call string-set! "String_set_ex" 3)
 
 (define-operation make-string/1
    (list (string-append "return Make_string(" (argn 0) ",Make_char("

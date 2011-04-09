@@ -313,6 +313,17 @@ func String_ref(x, idx Obj) Obj {
 	return Make_char(v[fixnum_to_int(idx)])
 }
 
+func String_set_ex(x,idx,ch Obj) Obj {
+	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag ||
+		(uintptr(unsafe.Pointer(idx)) & fixnum_mask) != fixnum_tag ||
+		(uintptr(unsafe.Pointer(ch)) & char_mask) != char_tag {
+		panic("bad type")
+	}
+	v := (*x).([]int)
+	v[fixnum_to_int(idx)] = char_to_int(ch)
+	return Void
+}
+
 // Symbols
 
 // It would be better to use a weak hashset here, if one was available
