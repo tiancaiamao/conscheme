@@ -440,7 +440,7 @@ func Obj_display(x Obj, p io.Writer, write Obj) {
 	case x == Void:
 		fmt.Fprintf(p, "#<void>")
 	case procedure_p(x) != False:
-		fmt.Fprintf(p, "#<procedure>")
+		fmt.Fprintf(p, "#<procedure %x>",x)
 	// Unknown types
 	case uintptr(unsafe.Pointer(x)) & heap_mask == heap_tag:
 		fmt.Fprintf(p, "#<heapobj %d>", *x)

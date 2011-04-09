@@ -30,12 +30,11 @@
           #f)))
 
 (define (equal? x y)
-  (cond ((eqv? x y) #t)
-        ((and (string? x) (string? y))
-         (string=? x y))
-        ((and (pair? x) (pair? y))
+  (cond ((and (pair? x) (pair? y))
          (and (equal? (car x) (car y))
               (equal? (cdr x) (cdr y))))
+        ((and (string? x) (string? y))
+         (string=? x y))
         ((and (vector? x) (vector? y)
               (= (vector-length x) (vector-length y)))
          (let lp ((i (- (vector-length x) 1)))
@@ -43,7 +42,7 @@
                  ((not (equal? (vector-ref x i) (vector-ref y i)))
                   #f)
                  (else (lp (- i 1))))))
-        (else #f)))
+        (else (eqv? x y))))
 
 ;;; Numbers
 
@@ -54,7 +53,11 @@
 
 (define (inexact? z) #f)
 
-;; < > <= >=
+;; XXX: handle more arguments
+(define (< x y) (eq? ($cmp x y) -1))
+(define (> x y) (eq? ($cmp x y) 1))
+
+;; <= >=
 
 (define (zero? x) (= x 0))
 
@@ -225,7 +228,27 @@
 
 ;; string-ci=? string<? string>? string<=? string>=? string-ci<? string-ci>?
 ;; string-ci<=? string-ci>=?
-;; substring string-append string->list list->string
+;; substring
+
+(define (string-append . xs)
+  (let lp ((strings xs) (len 0))
+    (if (null? strings)
+        (let ((ret (make-string len)))
+          (let lp ((strings xs) (reti 0))
+            (if (null? strings)
+                ret
+                (let* ((str (car strings))
+                       (strlen (string-length str)))
+                  (let lp* ((stri 0)
+                            (reti reti))
+                    (cond ((= stri strlen)
+                           (lp (cdr strings) reti))
+                          (else
+                           (string-set! ret reti (string-ref str stri))
+                           (lp* (+ stri 1) (+ reti 1)))))))))
+        (lp (cdr strings) (+ len (string-length (car strings)))))))
+
+;; string->list list->string
 ;; string-copy string-fill!
 
 ;;; Vectors

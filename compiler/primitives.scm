@@ -140,6 +140,7 @@
 (define-call $+ "number_add" 2)
 (define-call $/ "number_divide" 2)
 (define-call $- "number_subtract" 2)
+(define-call $cmp "number_cmp" 2)
 
 (define-operation least-fixnum/0 (list "return Make_fixnum(fixnum_min)"))
 (define-primitive (least-fixnum args)

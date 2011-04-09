@@ -21,8 +21,7 @@
 /// Simple tree interpreter for Scheme. We'll use this to iron out a
 /// few details before we hopefully go over to a bytecode VM.
 
-// Limitations: wrong semantics for mutable variables, and no TCO. No
-// call/cc, etc.
+// Limitations: TCO, no call/cc, etc.
 
 package conscheme
 

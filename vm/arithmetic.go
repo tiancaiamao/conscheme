@@ -41,8 +41,6 @@ func init() {
 	fixnum_min_Int = big.NewInt(int64(fixnum_min))
 }
 
-// Fixnums
-
 func fixnum_p(x Obj) Obj {
 	return Make_boolean((uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag)
 }
@@ -56,44 +54,10 @@ func fixnum_to_int(x Obj) int {
 	return int(uintptr(unsafe.Pointer(x))) >> fixnum_shift
 }
 
-func fixnum_add(fx1,fx2 Obj) Obj {
-	i1 := uintptr(unsafe.Pointer(fx1))
-	i2 := uintptr(unsafe.Pointer(fx2))
-	if (i1 & fixnum_mask) != fixnum_tag || (i2 & fixnum_mask) != fixnum_tag {
-		panic("bad type")
-	}
-	r := i1 + i2
-	// TODO: how should we do this?
-	// if r < fixnum_min || r > fixnum_max {
-	// 	panic("result not representable")
-	// }
-
-	return Obj(unsafe.Pointer(uintptr(r - fixnum_tag)))
-}
-
-//
-
-func make_bignum(x int64) Obj {
-	var vv interface{} = big.NewInt(x)
-	return Obj(&vv)
-}
-
-func bignum_p(x Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { return False }
-
-	switch v := (*x).(type) {
-	case *big.Int:
-		return True
-	}
-	return False
-}
-
-
-
 func make_number(x int) Obj {
 	v := Make_fixnum(x)
 	if fixnum_to_int(v) != x {
-		return make_bignum(int64(x))
+		return wrap(big.NewInt(int64(x)))
 	}
 	return v
 }
@@ -288,6 +252,43 @@ func number_divide(x,y Obj) Obj {
 	}
 	panic("bad type")
 }
+
+func number_cmp(x,y Obj) Obj {
+	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
+	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	if xfx && yfx {
+		i1 := int(uintptr(unsafe.Pointer(x))) >> fixnum_shift
+		i2 := int(uintptr(unsafe.Pointer(y))) >> fixnum_shift
+		switch {
+		case i1 > i2: return Make_fixnum(1)
+		case i1 < i2: return Make_fixnum(-1)
+		default: return Make_fixnum(0)
+		}
+	}
+
+	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
+		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
+		panic("bad type")
+	}
+
+	if xfx { return number_subtract(y,x) }
+
+	switch vx := (*x).(type) {
+	case *big.Int:
+		if yfx {
+			vy := big.NewInt(int64(fixnum_to_int(y)))
+			return Make_fixnum(vx.Cmp(vy))
+		}
+		switch vy := (*y).(type) {
+		case *big.Int:
+			return Make_fixnum(vx.Cmp(vy))
+		default:
+			panic("bad type")
+		}
+	}
+	panic("bad type")
+}
+
 
 func _number_to_string(num Obj, radix Obj) Obj {
 	var format string

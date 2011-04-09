@@ -91,6 +91,10 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 		return Make_fixnum(fixnum_max)
 	case "least-fixnum/0":
 		return Make_fixnum(fixnum_min)
+	case "$cmp/2":
+		arg0 := ev(car(code), false, lexenv);code = cdr(code)
+		arg1 := ev(car(code), false, lexenv)
+		return number_cmp(arg0, arg1)
 	case "$-/2":
 		arg0 := ev(car(code), false, lexenv);code = cdr(code)
 		arg1 := ev(car(code), false, lexenv)
