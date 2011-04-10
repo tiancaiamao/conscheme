@@ -24,6 +24,7 @@
 package conscheme
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"utf8"
@@ -85,6 +86,32 @@ func output_port_p(x Obj) Obj {
 		return True
 	}
 	return False
+}
+
+// Called by Obj_display
+func display_port(out io.Writer, port Obj) {
+	name := "*unnamed*"
+	var is_binary bool
+	switch v := (*port).(type) {
+	case *OutputPort:
+		fmt.Fprintf(out, "#<output-port ")
+		is_binary = v.is_binary
+		switch f := v.w.(type) {
+		case *os.File: name = f.Name()
+		}
+	case *InputPort:
+		fmt.Fprintf(out, "#<input-port ")
+		is_binary = v.is_binary
+		switch f := v.r.(type) {
+		case *os.File: name = f.Name()
+		}
+	}
+	if is_binary {
+		fmt.Fprintf(out, "binary")
+	} else {
+		fmt.Fprintf(out, "textual")
+	}
+	fmt.Fprintf(out, " %s>", name)
 }
 
 // XXX: curin and curout should be handled with dynamic-wind and
@@ -209,6 +236,16 @@ func write(x,port Obj) Obj {
 	if v.is_binary { panic("bad port type") }
 	Obj_display(x, v.w, True)
 	return Void
+}
+
+// Bytevectors
+
+func bytevector_p(x Obj) Obj {
+	if is_immediate(x) { return False }
+	switch v := (*x).(type) {
+	case []byte: return True
+	}
+	return False
 }
 
 // Misc

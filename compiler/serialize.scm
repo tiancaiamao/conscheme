@@ -51,6 +51,12 @@
 
 (define TYPE-RATIONAL 8)
 
+(define TYPE-FLOAT64 9)
+
+(define TYPE-COMPLEX128 10)
+
+(define TYPE-BYTEVECTOR 12)
+
 ;; Somewhat inefficient representation of integers
 (define (write-integer t p)
   (put-u8 p (if (negative? t) 1 0))
@@ -85,6 +91,21 @@
             (write-type TYPE-RATIONAL p)
             (write-integer (numerator x) p)
             (write-integer (denominator x) p))
+           ((and (inexact? x) (real? x))
+            (write-type TYPE-FLOAT64 p)
+            (write-length 8 p)
+            (let ((bv (make-bytevector 8)))
+              (bytevector-ieee-double-set! bv 0 x (endianness little))
+              (put-bytevector p bv)))
+           ((and (inexact? x) (not (real? x)))
+            (write-type TYPE-COMPLEX128 p)
+            (write-length 16 p)
+            (let ((bv (make-bytevector 16)))
+              (bytevector-ieee-double-set! bv 0 (real-part x) (endianness little))
+              (bytevector-ieee-double-set! bv 8 (imag-part x) (endianness little))
+              (put-bytevector p bv)))
+           ;; TODO: exact complex numbers. guile doesn't support
+           ;; these, so it will have to wait a little while.
            (else
             (error 'serialize "Can not serialize this number" x))))
         ((null? x)
@@ -95,6 +116,10 @@
          (let ((x (string->utf8 x)))
            (write-length (bytevector-length x) p)
            (put-bytevector p x)))
+        ((bytevector? x)
+         (write-type TYPE-BYTEVECTOR p)
+         (write-length (bytevector-length x) p)
+         (put-bytevector p x))
         ((symbol? x)
          (write-type TYPE-SYMBOL p)
          (let ((x (string->utf8 (symbol->string x))))

@@ -24,10 +24,11 @@
 package conscheme
 
 import (
-		"io"
-		"os"
-		"fmt"
-		"big"
+	"io"
+	"os"
+	"fmt"
+	"big"
+	"encoding/binary"
 )
 
 const (
@@ -40,6 +41,10 @@ const (
 	Boolean	= 6
 	Char	= 7
 	Rational = 8
+	Float64 = 9
+	Complex128 = 10
+	// Comp = 11
+	Bytevector = 12
 )
 
 const Version = 1
@@ -110,6 +115,14 @@ func (d *Deserializer) ReadObject() Obj {
 	case Rational:
 		i := big.NewRat(1,1)
 		return wrap(i.SetFrac(length, d.readInt()))
+	case Float64:
+		var v float64
+		binary.Read(d.r, binary.LittleEndian, &v)
+		return wrap(v)
+	case Complex128:
+		var v complex128
+		binary.Read(d.r, binary.LittleEndian, &v)
+		return wrap(v)
 	case Pair:
 		o1 := d.ReadObject()
 		o2 := d.ReadObject()
@@ -132,6 +145,10 @@ func (d *Deserializer) ReadObject() Obj {
 		i := length.Int64()
 		s := d.readString(i)
 		return String_to_symbol(String_string(s))
+	case Bytevector:
+		b := make([]byte, length.Int64())
+		d.r.Read(b)
+		return wrap(b)
 	case Boolean:
 		if length.Int64() != 0 {
 			return Make_boolean(true)
