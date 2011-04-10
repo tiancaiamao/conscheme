@@ -153,8 +153,13 @@
 
 (define (list . x) x)
 
-(define (length x) (or (floyd x) (error 'length "not a list")))
-;; append
+;(define (length x) (or (floyd x) (error 'length "not a list")))
+
+(define (append x y) 
+  (let lp ((x (reverse x)) (y y))
+	(if (null? y)
+	  (reverse x)
+	  (lp (cons (car y) x) (cdr y)))))
 
 (define (reverse l)
   (let lp ((l l) (ret '()))
@@ -250,6 +255,19 @@
         (lp (cdr strings) (+ len (string-length (car strings)))))))
 
 ;; string->list list->string
+
+(define (string->list str) 
+  (let lp ((l '()) (i (string-length str)))
+	(if (= i 0)
+	  l
+	  (lp (cons (string-ref str k) l) (- i 1)))))
+
+(define (list->string y)
+  (let lp ((len (length x)) (str (make-string (length x))) (x x))
+	(cond ((null? x) str) 
+	  ((not (char? (car x))) (error 'list->string "not a list of chars"))
+	  (lp (- len 1) (string-set! str len (car x)) (cdr x)))))
+
 ;; string-copy string-fill!
 
 ;;; Vectors
