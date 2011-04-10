@@ -221,7 +221,7 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
 		code := cdr(code)
 		fun := ev(car(code), false, lexenv)
 		code = cdr(code)
-		args := make([]Obj, fixnum_to_int(Length(code)))
+		args := make([]Obj, fixnum_to_int(Floyd(code)))
 		for i := 0; code != Eol; i, code = i+1, cdr(code) {
 			args[i] = ev(car(code), false, lexenv)
 		}
