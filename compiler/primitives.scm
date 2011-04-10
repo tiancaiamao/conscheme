@@ -174,6 +174,13 @@
 
 ;; Misc
 
+(define-operation apply/n               ;very specific to eval...
+  (list "return apply(code,lexenv)"))
+(define-primitive (apply args)
+  (if (> (length args) 1)
+      'apply/n
+      'ERROR))
+
 ;; (define-call procedure? "procedure_p" 1)
 
 (define-operation unspecified/0 (list "return Void"))

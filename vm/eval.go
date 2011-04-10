@@ -248,6 +248,28 @@ func ap(oproc Obj, args []Obj) Obj {
 	return proc.apply(proc, args, nil)
 }
 
+// Implements the apply primitive
+func apply(code Obj, lexenv map[string]Obj) Obj {
+	fun := ev(car(code), false, lexenv)
+	code = cdr(code)
+	fixn := fixnum_to_int(Length(code)) - 1
+	fixargs := make([]Obj, fixn)
+	var args []Obj
+	for i := 0; i < fixn; i, code = i + 1, cdr(code) {
+		fixargs[i] = ev(car(code), false, lexenv)
+	}
+
+	// The last argument to apply is a list
+	last := ev(car(code), false, lexenv)
+	args = make([]Obj, fixn + fixnum_to_int(Length(last)))
+	copy(args, fixargs)
+	for i := fixn; last != Eol; i, last = i + 1, cdr(last) {
+		args[i] = car(last)
+	}
+	
+	return ap(fun, args)
+}
+
 // Runs the simple language emitted by the "compiler"
 func Eval(code Obj) Obj {
 	return ev(code, true, nil)

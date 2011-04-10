@@ -71,6 +71,8 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 		return Eof
 	case "unspecified/0":
 		return Void
+	case "apply/n":
+		return apply(code,lexenv)
 	case "make-string/2":
 		arg0 := ev(car(code), false, lexenv);code = cdr(code)
 		arg1 := ev(car(code), false, lexenv)
