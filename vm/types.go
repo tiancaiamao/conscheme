@@ -192,18 +192,41 @@ func list(v ...Obj) Obj {
 	return ret
 }
 
+func Length(x Obj) Obj {
+	var i int
+	for i = 0; x != Eol; i++ {
+		if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
+			panic("not a list")
+		}
+		v := (*x).(*[2]Obj)
+		x = v[1]
+	}
+	return make_number(i)
+}
+
 func Floyd(x Obj) Obj {
 	t := x
 	h := x
-	for l := 0; t != h; l++{
-		if t == Eol {
-			return make_number(l)
+	for {
+		if t == Eol || h == Eol {
+			return True
 		}
+		if pair_p(t) == False || pair_p(h) == False {
+			return False
+		}
+		h = cdr(h)
 		if h == Eol {
-			return make_number(l*2)
+			return True
+		}
+
+		if pair_p(h) == False {
+			return False
 		}
 		t = cdr(t)
-		h := cdr(cdr(h))
+		h = cdr(h)
+		if h == t {
+			return False
+		}
 	}
 	return False
 }

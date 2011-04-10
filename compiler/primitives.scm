@@ -113,6 +113,7 @@
 (define-call car "car" 1)
 (define-call cdr "cdr" 1)
 (define-call floyd "Floyd" 1)
+(define-call length "Length" 1)
 (define-call set-car! "set_car_ex" 2)
 (define-call set-cdr! "set_cdr_ex" 2)
 

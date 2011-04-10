@@ -304,7 +304,7 @@
 
 (define (display obj . x)
   (if (null? x)
-      ($display obj (current-outport-port))
+      ($display obj (current-output-port))
       ($display obj (car x))))
 
 

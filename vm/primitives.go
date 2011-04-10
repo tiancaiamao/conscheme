@@ -152,6 +152,9 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 		arg0 := ev(car(code), false, lexenv);code = cdr(code)
 		arg1 := ev(car(code), false, lexenv)
 		return set_car_ex(arg0, arg1)
+	case "length/1":
+		arg0 := ev(car(code), false, lexenv)
+		return Length(arg0)
 	case "floyd/1":
 		arg0 := ev(car(code), false, lexenv)
 		return Floyd(arg0)
