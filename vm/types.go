@@ -192,16 +192,20 @@ func list(v ...Obj) Obj {
 	return ret
 }
 
-func Length(x Obj) Obj {
-	var l int
-	for l = 0; x != Eol; l++ {
-		if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
-			panic("not a list")
+func Floyd(x Obj) Obj {
+	t := x
+	h := x
+	for l := 0; t != h; l++{
+		if t == Eol {
+			return make_number(l)
 		}
-		v := (*x).(*[2]Obj)
-		x = v[1]
+		if h == Eol {
+			return make_number(l*2)
+		}
+		t = cdr(t)
+		h := cdr(cdr(h))
 	}
-	return make_number(l)
+	return False
 }
 
 // Vectors

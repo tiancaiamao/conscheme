@@ -92,6 +92,7 @@
     (check (input-port? (current-output-port)) => #f)
     (check (output-port? (current-input-port)) => #f)
     (check (output-port? (current-output-port)) => #t))
+   	(check (list? '(1 2 3 4) => #t))
    (else #F)))
 
 (cond ((member "compile" (command-line))

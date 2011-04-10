@@ -149,10 +149,11 @@
 
 (define (null? x) (eq? x '()))
 
-;; list?
+(define (list? x) (and (floyd x) #t))
 
 (define (list . x) x)
 
+(define (length x) (or (floyd x) (error 'length "not a list")
 ;; append
 
 (define (reverse l)
