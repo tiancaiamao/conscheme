@@ -299,13 +299,13 @@
 ;; TODO: write these in scheme and handle the port argument
 (define (write obj . x)
   (if (null? x)
-      ($write obj)
-      ($write obj #;(car x))))
+      ($write obj (current-output-port))
+      ($write obj (car x))))
 
 (define (display obj . x)
   (if (null? x)
-      ($display obj)
-      ($display obj #;(car x))))
+      ($display obj (current-outport-port))
+      ($display obj (car x))))
 
 
 (define (newline . x)

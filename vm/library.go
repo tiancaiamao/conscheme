@@ -55,6 +55,18 @@ func init() {
 	curout = stdout
 }
 
+func port_p(x Obj) Obj {
+	if is_immediate(x) { return False }
+
+	switch v := (*x).(type) {
+	case *InputPort:
+		return True
+	case *OutputPort:
+		return True
+	}
+	return False
+}
+
 func input_port_p(x Obj) Obj {
 	if is_immediate(x) { return False }
 
@@ -181,6 +193,22 @@ func put_u8(port,octet Obj) Obj {
 		return Void
 	}
 	panic("bad type")
+}
+
+func display(x,port Obj) Obj {
+	if is_immediate(port) { panic("bad type") }
+	v := (*port).(*OutputPort)
+	if v.is_binary { panic("bad port type") }
+	Obj_display(x, v.w, False)
+	return Void
+}
+
+func write(x,port Obj) Obj {
+	if is_immediate(port) { panic("bad type") }
+	v := (*port).(*OutputPort)
+	if v.is_binary { panic("bad port type") }
+	Obj_display(x, v.w, True)
+	return Void
 }
 
 // Misc

@@ -5,6 +5,14 @@ import "fmt"
 import "os"
 func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 	switch primop {
+	case "$write/2":
+		arg0 := ev(car(code), false, lexenv);code = cdr(code)
+		arg1 := ev(car(code), false, lexenv)
+		return write(arg0, arg1)
+	case "$display/2":
+		arg0 := ev(car(code), false, lexenv);code = cdr(code)
+		arg1 := ev(car(code), false, lexenv)
+		return display(arg0, arg1)
 	case "lookahead-u8/1":
 		arg0 := ev(car(code), false, lexenv)
 		return lookahead_u8(arg0)
@@ -32,12 +40,9 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 	case "input-port?/1":
 		arg0 := ev(car(code), false, lexenv)
 		return input_port_p(arg0)
-	case "$write/1":
+	case "port?/1":
 		arg0 := ev(car(code), false, lexenv)
-		return Write(arg0)
-	case "$display/1":
-		arg0 := ev(car(code), false, lexenv)
-		return Display(arg0)
+		return port_p(arg0)
 	case "$cell-set!/2":
 		v := ev(car(code), false, lexenv)
 		vv := (*v).(*[1]Obj)
