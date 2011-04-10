@@ -154,7 +154,6 @@
       'greatest-fixnum/0
       'ERROR))
 
-
 ;; Strings
 
 (define-call string? "string_p" 1)
@@ -250,20 +249,6 @@
 
 ;; I/O
 
-(define-operation $display/1 (normal-call "Display" 1))
-(define-primitive ($display args)
-  ;; TODO: display with the port argument. write display in scheme instead
-  (if (= (length args) 1)
-      '$display/1
-      'ERROR))
-
-(define-operation $write/1 (normal-call "Write" 1))
-(define-primitive ($write args)
-  ;; TODO: the port argument. write in scheme instead
-  (if (= (length args) 1)
-      '$write/1
-      'ERROR))
-
 (define-call input-port? "input_port_p" 1)
 (define-call output-port? "output_port_p" 1)
 (define-call current-input-port "current_input_port" 0)
@@ -275,6 +260,9 @@
 (define-call get-u8 "get_u8" 1)
 (define-call put-u8 "put_u8" 2)
 (define-call lookahead-u8 "lookahead_u8" 1)
+
+(define-call $display "display" 2)
+(define-call $write "write" 2)
 
 ;;; A compiler pass
 
