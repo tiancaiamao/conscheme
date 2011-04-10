@@ -470,6 +470,14 @@ func Obj_display(x Obj, p io.Writer, write Obj) {
 		fmt.Fprintf(p, "#<procedure %x>",x)
 	case port_p(x) != False:
 		display_port(p, x)
+	case bytevector_p(x) != False:
+		fmt.Fprintf(p, "#vu8(")
+		bv := (*x).([]byte)
+		for i := 0; i < len(bv); i++ {
+			if i > 0 { fmt.Fprintf(p, " ") }
+			fmt.Fprintf(p, "%d", bv[i])
+		}
+		fmt.Fprintf(p, ")")
 	// Unknown types
 	case uintptr(unsafe.Pointer(x)) & heap_mask == heap_tag:
 		fmt.Fprintf(p, "#<heapobj %d>", *x)

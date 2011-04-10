@@ -55,6 +55,8 @@
 
 (define TYPE-COMPLEX128 10)
 
+(define TYPE-BYTEVECTOR 12)
+
 ;; Somewhat inefficient representation of integers
 (define (write-integer t p)
   (put-u8 p (if (negative? t) 1 0))
@@ -114,6 +116,10 @@
          (let ((x (string->utf8 x)))
            (write-length (bytevector-length x) p)
            (put-bytevector p x)))
+        ((bytevector? x)
+         (write-type TYPE-BYTEVECTOR p)
+         (write-length (bytevector-length x) p)
+         (put-bytevector p x))
         ((symbol? x)
          (write-type TYPE-SYMBOL p)
          (let ((x (string->utf8 (symbol->string x))))

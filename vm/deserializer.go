@@ -44,6 +44,7 @@ const (
 	Float64 = 9
 	Complex128 = 10
 	// Comp = 11
+	Bytevector = 12
 )
 
 const Version = 1
@@ -144,6 +145,10 @@ func (d *Deserializer) ReadObject() Obj {
 		i := length.Int64()
 		s := d.readString(i)
 		return String_to_symbol(String_string(s))
+	case Bytevector:
+		b := make([]byte, length.Int64())
+		d.r.Read(b)
+		return wrap(b)
 	case Boolean:
 		if length.Int64() != 0 {
 			return Make_boolean(true)

@@ -250,6 +250,10 @@
        '$cell-set!/2
        'ERROR))
 
+;; Bytevectors
+
+(define-call bytevector? "bytevector_p" 1)
+
 ;; I/O
 
 (define-call port? "port_p" 1)

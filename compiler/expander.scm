@@ -244,7 +244,7 @@
                  (map (lambda (x) (expand* x env)) x)
                  (error 'expand "Syntax error" x)))))))
   (cond ((symbol? x) x)
-        ((or (char? x) (number? x) (boolean? x) (string? x))
+        ((or (char? x) (number? x) (boolean? x) (string? x) (bytevector? x))
          (list 'quote x))
         ((vector? x)
          (error 'expand "Invalid expression: vectors must be quoted" x))

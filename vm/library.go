@@ -238,6 +238,16 @@ func write(x,port Obj) Obj {
 	return Void
 }
 
+// Bytevectors
+
+func bytevector_p(x Obj) Obj {
+	if is_immediate(x) { return False }
+	switch v := (*x).(type) {
+	case []byte: return True
+	}
+	return False
+}
+
 // Misc
 
 func Command_line() Obj {
