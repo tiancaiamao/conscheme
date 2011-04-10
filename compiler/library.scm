@@ -254,22 +254,37 @@
                            (lp* (+ stri 1) (+ reti 1)))))))))
         (lp (cdr strings) (+ len (string-length (car strings)))))))
 
-;; string->list list->string
 
 (define (string->list str) 
-  (let lp ((l '()) (i (string-length str)))
+  (let lp ((l '()) (i (- (string-length str) 1)))
 	(if (= i 0)
 	  l
 	  (lp (cons (string-ref str k) l) (- i 1)))))
 
-(define (list->string y)
-  (let lp ((len (length x)) (str (make-string (length x))) (x x))
-	(cond ((null? x) str) 
-	  ((not (char? (car x))) (error 'list->string "not a list of chars"))
-	  (lp (- len 1) (string-set! str len (car x)) (cdr x)))))
+(define (list->string x)
+  (let ((str (make-string (length x))))
+    (let lp ((ref (- (length x) 1)) (x x))
+	  (cond ((null? x) str) 
+            ((not (char? (car x))) (error 'list->string "not a list of chars"))
+            (else 
+              (string-set! str ref (car x))
+              (lp (- ref 1) (cdr x)))))))
 
+(define (string-copy x)
+  (let ((str (make-string (length x))))
+    (let lp ((ref (- (string-length x) 1)))
+      (cond ((< ref 0) str)
+        (else 
+          (string-set! str ref (string-ref x ref))
+          (lp (- ref 1)))))))
 ;; string-copy string-fill!
 
+(define (string-fill! str char)
+  (let lp ((ref (- 1 (length str))))
+    (cond ((< ref 0) str)
+          (else
+            (string-set! str ref char)
+            (lp (- ref 1))))))
 ;;; Vectors
 
 ;; make-vector vector vector-set! vector->list list->vector
