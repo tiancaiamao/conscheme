@@ -153,7 +153,7 @@
 
 (define (list . x) x)
 
-(define (length x) (or (floyd x) (error 'length "not a list")
+(define (length x) (or (floyd x) (error 'length "not a list")))
 ;; append
 
 (define (reverse l)
