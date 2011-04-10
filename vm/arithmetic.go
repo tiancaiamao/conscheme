@@ -41,6 +41,11 @@ func init() {
 	fixnum_min_Int = big.NewInt(int64(fixnum_min))
 }
 
+// Exact complex numbers. Inexact complex numbers use complex128.
+type Compnum struct {
+	real, imag big.Rat
+}
+
 func fixnum_p(x Obj) Obj {
 	return Make_boolean((uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag)
 }
@@ -87,12 +92,14 @@ func number_p(x Obj) Obj {
 		return False
 	}
 	switch v := (*x).(type) {
+	default: return False
 	case *big.Int:
-		return True
 	case *big.Rat:
-		return True
+	case float64:
+	case complex128:
+	// case *Compnum:
 	}
-	return False
+	return True
 }
 
 func number_equal(x,y Obj) Obj {
@@ -282,9 +289,13 @@ func number_cmp(x,y Obj) Obj {
 		switch vy := (*y).(type) {
 		case *big.Int:
 			return Make_fixnum(vx.Cmp(vy))
+		case complex128:
+			panic("comparison on complex numbers is undefined")
 		default:
 			panic("bad type")
 		}
+	case complex128:
+		panic("comparison on complex numbers is undefined")
 	}
 	panic("bad type")
 }
@@ -310,6 +321,20 @@ func _number_to_string(num Obj, radix Obj) Obj {
 	case *big.Rat:
 		return String_string(fmt.Sprintf(format + "/" + format,
 			v.Num(), v.Denom()))
+	case float64:
+		if format != "%d" {
+			panic("inexact numbers can only be printed decimally")
+		}
+		return String_string(fmt.Sprintf("%g", v))
+	case complex128:
+		if format != "%d" {
+			panic("inexact numbers can only be printed decimally")
+		}
+		// %+f gives trailing zeroes, but %+g loses decimal
+		// points, which is worse
+		format = "%+f%+fi"
+		return String_string(fmt.Sprintf(format, real(v), imag(v)))
+	// case *Compnum:
 	}
 
 	panic("number->string needs numbers")

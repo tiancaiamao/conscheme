@@ -85,6 +85,8 @@
     (check (/ -4 2) => -2)
     (check (- 1 3) => -2)
     (check (list (< 1 2) (= 1 2) (> 1 2)) => '(#t #f #f))
+    (check (list? (list 42.42 1.3+1.3i -1.0i +1.0i 2+3i 1/3+2/3i))
+           => #t)
 
     (print "current input port: " (current-input-port))
     (print "current output port: " (current-output-port))
