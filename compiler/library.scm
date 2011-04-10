@@ -114,7 +114,15 @@
          (error 'number->string "Too many arguments" num rest))))
 
 ;; string->number
-
+(define (string->number str . radix)
+  (cond ((null? radix)
+         ($string->number str 10))
+        ((null? (cdr radix))
+         (if (memv (car radix) '(2 8 10 16))
+           ($string->number str (car radix))
+           (error 'string->number "Unknown radix" (car radix))))
+        (else
+          (error 'string->number "To many arguments" str radix))))
 ;;; Pairs
 
 ;; set-car! set-cdr!
@@ -257,26 +265,26 @@
 
 (define (string->list str) 
   (let lp ((l '()) (i (- (string-length str) 1)))
-	(if (= i 0)
+	(if (< i 0)
 	  l
-	  (lp (cons (string-ref str k) l) (- i 1)))))
+	  (lp (cons (string-ref str i) l) (- i 1)))))
 
 (define (list->string x)
   (let ((str (make-string (length x))))
-    (let lp ((ref (- (length x) 1)) (x x))
+    (let lp ((ref 0) (x x))
 	  (cond ((null? x) str) 
             ((not (char? (car x))) (error 'list->string "not a list of chars"))
             (else 
               (string-set! str ref (car x))
-              (lp (- ref 1) (cdr x)))))))
+              (lp (+ ref 1) (cdr x)))))))
 
 (define (string-copy x)
-  (let ((str (make-string (length x))))
+  (let ((str (make-string (string-length x))))
     (let lp ((ref (- (string-length x) 1)))
       (cond ((< ref 0) str)
-        (else 
-          (string-set! str ref (string-ref x ref))
-          (lp (- ref 1)))))))
+            (else 
+              (string-set! str ref (string-ref x ref))
+              (lp (- ref 1)))))))
 ;; string-copy string-fill!
 
 (define (string-fill! str char)
@@ -295,6 +303,18 @@
 ;; apply
 ;; map
 
+(define (map f l . ls)
+  (if (null? ls) 
+    (let lp ((l l) (ls '()))
+      (if (null? l) 
+        (reverse ls)
+        (lp (cdr l) (cons (f (car l)) ls))))
+    (let lp ((acc '()) (l l) (ls ls))
+        (if (null? l) 
+          (reverse acc)
+          (lp (cons (apply f (car l) (map car ls)) acc) (cdr l) (map cdr ls)))))) 
+
+
 ;; FIXME: takes n>=1 lists
 (define (for-each f l)
   (cond ((not (null? l))
@@ -311,7 +331,17 @@
 ;;; Input and output
 
 ;; call-with-input-file
+
+(define (call-with-input-file file f)
+  (let* ((handle (open-input-file file)) (output (f handle)))
+    (close-input-port handle)
+    output))
 ;; call-with-output-file
+
+(define (call-with-out-file file f)
+  (let* ((handle (open-output-file file)) (output (f handle)))
+    (close-output-port handle)
+    outpu))
 
 ;; with-input-from-file wwith-output-to-file
 ;; open-input-file open-output-file
