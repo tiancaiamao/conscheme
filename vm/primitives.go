@@ -40,6 +40,9 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 	case "input-port?/1":
 		arg0 := ev(car(code), false, lexenv)
 		return input_port_p(arg0)
+	case "port?/1":
+		arg0 := ev(car(code), false, lexenv)
+		return port_p(arg0)
 	case "$cell-set!/2":
 		v := ev(car(code), false, lexenv)
 		vv := (*v).(*[1]Obj)

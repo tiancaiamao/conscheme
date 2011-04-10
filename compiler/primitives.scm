@@ -171,11 +171,6 @@
     ((2) 'make-string/2)
     (else 'ERROR)))
 
-
-;; Ports
-
-;; (define-call port? "port_p" 1)
-
 ;; Misc
 
 ;; (define-call procedure? "procedure_p" 1)
@@ -249,6 +244,7 @@
 
 ;; I/O
 
+(define-call port? "port_p" 1)
 (define-call input-port? "input_port_p" 1)
 (define-call output-port? "output_port_p" 1)
 (define-call current-input-port "current_input_port" 0)
