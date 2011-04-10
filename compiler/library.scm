@@ -288,7 +288,7 @@
 ;; string-copy string-fill!
 
 (define (string-fill! str char)
-  (let lp ((ref (- 1 (length str))))
+  (let lp ((ref (- (string-length str) 1)))
     (cond ((< ref 0) str)
           (else
             (string-set! str ref char)
@@ -338,10 +338,10 @@
     output))
 ;; call-with-output-file
 
-(define (call-with-out-file file f)
+(define (call-with-output-file file f)
   (let* ((handle (open-output-file file)) (output (f handle)))
     (close-output-port handle)
-    outpu))
+    output))
 
 ;; with-input-from-file wwith-output-to-file
 ;; open-input-file open-output-file
