@@ -56,8 +56,12 @@
 ;; XXX: handle more arguments
 (define (< x y) (eq? ($cmp x y) -1))
 (define (> x y) (eq? ($cmp x y) 1))
-
-;; <= >=
+(define (<= x y)
+  (let ((c ($cmp x y)))
+    (or (eq? x -1) (eq? x 0))))
+(define (>= x y)
+  (let ((c ($cmp x y)))
+    (or (eq? x 1) (eq? x 0))))
 
 (define (zero? x) (= x 0))
 
@@ -119,13 +123,13 @@
          ($string->number str 10))
         ((null? (cdr radix))
          (if (memv (car radix) '(2 8 10 16))
-           ($string->number str (car radix))
-           (error 'string->number "Unknown radix" (car radix))))
+             ($string->number str (car radix))
+             (error 'string->number "Unknown radix" (car radix))))
         (else
-          (error 'string->number "To many arguments" str radix))))
+         (error 'string->number "Too many arguments" str radix))))
+
 ;;; Pairs
 
-;; set-car! set-cdr!
 (define (caar x) (car (car x)))
 (define (cadr x) (car (cdr x)))
 (define (cdar x) (cdr (car x)))
@@ -161,13 +165,11 @@
 
 (define (list . x) x)
 
-;(define (length x) (or (floyd x) (error 'length "not a list")))
-
-(define (append x y) 
+(define (append x y)
   (let lp ((x (reverse x)) (y y))
-	(if (null? y)
-	  (reverse x)
-	  (lp (cons (car y) x) (cdr y)))))
+    (if (null? y)
+        (reverse x)
+        (lp (cons (car y) x) (cdr y)))))
 
 (define (reverse l)
   (let lp ((l l) (ret '()))
@@ -180,7 +182,10 @@
       x
       (list-tail (cdr x) (- k 1))))
 
-;; list-ref
+(define (list-ref x k)
+  (if (zero? k)
+      (car x)
+      (list-ref (cdr x) (- k 1))))
 
 (define (memq el list)
   (cond ((null? list) #f)
@@ -212,25 +217,23 @@
         ((equal? el (caar list)) (car list))
         (else (assoc el (cdr list)))))
 
-;;; Symbols
-
-;; symbol->string
-;; string->symbol
-
 ;;; Characters
 
 (define (char=? x y) (= (char->integer x) (char->integer y)))
+(define (char<? x y) (< (char->integer x) (char->integer y)))
+(define (char>? x y) (> (char->integer x) (char->integer y)))
+(define (char<=? x y) (<= (char->integer x) (char->integer y)))
+(define (char>=? x y) (>= (char->integer x) (char->integer y)))
 
-;; char<? char>? char<=? char>=?
 ;; char-ci=? char-ci<? char-ci>? char-ci<=? char-ci>=?
 ;; char-alphabetic? char-numeric? char-whitespace?
 ;; char-upper-case? char-lower-case?
-;; char->integer integer->char
 ;; char-upcase char-downcase
 
 ;;; Strings
 
-;; string string-set!
+(define (string . x)
+  (list->string x))
 
 (define (string=? x y)
   (and (= (string-length x) (string-length y))
@@ -262,58 +265,53 @@
                            (lp* (+ stri 1) (+ reti 1)))))))))
         (lp (cdr strings) (+ len (string-length (car strings)))))))
 
-
-(define (string->list str) 
+(define (string->list str)
   (let lp ((l '()) (i (- (string-length str) 1)))
-	(if (< i 0)
-	  l
-	  (lp (cons (string-ref str i) l) (- i 1)))))
+    (if (< i 0)
+        l
+        (lp (cons (string-ref str i) l) (- i 1)))))
 
 (define (list->string x)
   (let ((str (make-string (length x))))
     (let lp ((ref 0) (x x))
-	  (cond ((null? x) str) 
+      (cond ((null? x) str)
             ((not (char? (car x))) (error 'list->string "not a list of chars"))
-            (else 
-              (string-set! str ref (car x))
-              (lp (+ ref 1) (cdr x)))))))
+            (else
+             (string-set! str ref (car x))
+             (lp (+ ref 1) (cdr x)))))))
 
 (define (string-copy x)
   (let ((str (make-string (string-length x))))
     (let lp ((ref (- (string-length x) 1)))
       (cond ((< ref 0) str)
-            (else 
-              (string-set! str ref (string-ref x ref))
-              (lp (- ref 1)))))))
-;; string-copy string-fill!
+            (else
+             (string-set! str ref (string-ref x ref))
+             (lp (- ref 1)))))))
 
 (define (string-fill! str char)
   (let lp ((ref (- (string-length str) 1)))
     (cond ((< ref 0) str)
           (else
-            (string-set! str ref char)
-            (lp (- ref 1))))))
+           (string-set! str ref char)
+           (lp (- ref 1))))))
+
 ;;; Vectors
 
-;; make-vector vector vector-set! vector->list list->vector
+;; vector vector->list list->vector
 ;; vector-fill!
 
 ;;; Control features
 
-;; apply
-;; map
-
 (define (map f l . ls)
-  (if (null? ls) 
-    (let lp ((l l) (ls '()))
-      (if (null? l) 
-        (reverse ls)
-        (lp (cdr l) (cons (f (car l)) ls))))
-    (let lp ((acc '()) (l l) (ls ls))
-        (if (null? l) 
-          (reverse acc)
-          (lp (cons (apply f (car l) (map car ls)) acc) (cdr l) (map cdr ls)))))) 
-
+  (if (null? ls)
+      (let lp ((l l) (ls '()))
+        (if (null? l)
+            (reverse ls)
+            (lp (cdr l) (cons (f (car l)) ls))))
+      (let lp ((acc '()) (l l) (ls ls))
+        (if (null? l)
+            (reverse acc)
+            (lp (cons (apply f (car l) (map car ls)) acc) (cdr l) (map cdr ls))))))
 
 ;; FIXME: takes n>=1 lists
 (define (for-each f l)
@@ -326,17 +324,13 @@
 ;; dynamic-wind
 ;; eval scheme-report-environment null-environment
 ;; interaction-environment
-;;
 
 ;;; Input and output
-
-;; call-with-input-file
 
 (define (call-with-input-file file f)
   (let* ((handle (open-input-file file)) (output (f handle)))
     (close-input-port handle)
     output))
-;; call-with-output-file
 
 (define (call-with-output-file file f)
   (let* ((handle (open-output-file file)) (output (f handle)))
@@ -359,7 +353,7 @@
 
 ;; char-ready?
 
-;; TODO: write these in scheme and handle the port argument
+;; TODO: write these in scheme
 (define (write obj . x)
   (if (null? x)
       ($write obj (current-output-port))
@@ -370,7 +364,6 @@
       ($display obj (current-output-port))
       ($display obj (car x))))
 
-
 (define (newline . x)
   (if (null? x)
       (write-char #\newline)
@@ -380,8 +373,6 @@
   (if (null? rest)
       ($write-char c (current-output-port))
       ($write-char c (car rest))))
-
-;; write-char
 
 ;; load
 ;; transcript-on transcript-off

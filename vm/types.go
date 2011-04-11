@@ -270,7 +270,6 @@ func vector_length(x Obj) Obj {
 	return make_number(len(v))
 }
 
-
 func Vector_ref(x,idx Obj) Obj {
 	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag ||
 		(uintptr(unsafe.Pointer(idx)) & fixnum_mask) != fixnum_tag {

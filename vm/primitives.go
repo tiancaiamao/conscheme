@@ -128,6 +128,22 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 	case "number?/1":
 		arg0 := ev(car(code), false, lexenv)
 		return number_p(arg0)
+	case "vector-set!/3":
+		arg0 := ev(car(code), false, lexenv);code = cdr(code)
+		arg1 := ev(car(code), false, lexenv);code = cdr(code)
+		arg2 := ev(car(code), false, lexenv)
+		return Vector_set_ex(arg0, arg1, arg2)
+	case "vector-ref/2":
+		arg0 := ev(car(code), false, lexenv);code = cdr(code)
+		arg1 := ev(car(code), false, lexenv)
+		return Vector_ref(arg0, arg1)
+	case "vector-length/1":
+		arg0 := ev(car(code), false, lexenv)
+		return vector_length(arg0)
+	case "make-vector/2":
+		arg0 := ev(car(code), false, lexenv);code = cdr(code)
+		arg1 := ev(car(code), false, lexenv)
+		return Make_vector(arg0, arg1)
 	case "vector?/1":
 		arg0 := ev(car(code), false, lexenv)
 		return vector_p(arg0)

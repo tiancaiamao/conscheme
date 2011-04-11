@@ -132,6 +132,10 @@
 ;; Vectors
 
 (define-call vector? "vector_p" 1)
+(define-call make-vector "Make_vector" 2) ;TODO: 2nd arg is optional
+(define-call vector-length "vector_length" 1)
+(define-call vector-ref "Vector_ref" 2)
+(define-call vector-set! "Vector_set_ex" 3)
 
 ;; Numbers
 
