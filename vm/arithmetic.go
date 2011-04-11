@@ -102,47 +102,47 @@ func number_p(x Obj) Obj {
 	return True
 }
 
-func number_equal(x,y Obj) Obj {
-	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
-	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
-	if xfx && yfx {	return Make_boolean(x == y) }
+// func number_equal(x,y Obj) Obj {
+// 	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
+// 	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+// 	if xfx && yfx {	return Make_boolean(x == y) }
 
-	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
-		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
-		panic("bad type")
-	}
+// 	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
+// 		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
+// 		panic("bad type")
+// 	}
 
-	if xfx { return number_equal(y,x) }
+// 	if xfx { return number_equal(y,x) }
 
-	switch vx := (*x).(type) {
-	case *big.Int:
-		if yfx {
-			vy := big.NewInt(int64(fixnum_to_int(y)))
-			return Make_boolean(vx.Cmp(vy) == 0)
-		}
-		switch vy := (*y).(type) {
-		case *big.Int:
-			return Make_boolean(vx.Cmp(vy) == 0)
-		case *big.Rat:
-			return number_equal(y,x)
-		default:
-			panic("bad type")
-		}
-	case *big.Rat:
-		// rationals should always have been converted into
-		// other types if the denominator is one
-		if yfx { return False }
-		switch vy := (*y).(type) {
-		case *big.Int:
-			return False
-		case *big.Rat:
-			return Make_boolean(vx.Cmp(vy) == 0)
-		default:
-			panic("bad type")
-		}
-	}
-	panic("bad type")
-}
+// 	switch vx := (*x).(type) {
+// 	case *big.Int:
+// 		if yfx {
+// 			vy := big.NewInt(int64(fixnum_to_int(y)))
+// 			return Make_boolean(vx.Cmp(vy) == 0)
+// 		}
+// 		switch vy := (*y).(type) {
+// 		case *big.Int:
+// 			return Make_boolean(vx.Cmp(vy) == 0)
+// 		case *big.Rat:
+// 			return number_equal(y,x)
+// 		default:
+// 			panic("bad type")
+// 		}
+// 	case *big.Rat:
+// 		// rationals should always have been converted into
+// 		// other types if the denominator is one
+// 		if yfx { return False }
+// 		switch vy := (*y).(type) {
+// 		case *big.Int:
+// 			return False
+// 		case *big.Rat:
+// 			return Make_boolean(vx.Cmp(vy) == 0)
+// 		default:
+// 			panic("bad type")
+// 		}
+// 	}
+// 	panic("bad type")
+// }
 
 func number_add(x,y Obj) Obj {
 	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
@@ -288,6 +288,25 @@ func number_cmp(x,y Obj) Obj {
 		}
 		switch vy := (*y).(type) {
 		case *big.Int:
+			return Make_fixnum(vx.Cmp(vy))
+		case *big.Rat:
+			r := big.NewRat(1, 1).SetInt(vx)
+			return Make_fixnum(r.Cmp(vy))
+		case complex128:
+			panic("comparison on complex numbers is undefined")
+		default:
+			panic("bad type")
+		}
+	case *big.Rat:
+		if yfx {
+			vy := big.NewRat(int64(fixnum_to_int(y)), 1)
+			return Make_fixnum(vx.Cmp(vy))
+		}
+		switch vy := (*y).(type) {
+		case *big.Int:
+			r := big.NewRat(1, 1).SetInt(vy)
+			return Make_fixnum(vx.Cmp(r))
+		case *big.Rat:
 			return Make_fixnum(vx.Cmp(vy))
 		case complex128:
 			panic("comparison on complex numbers is undefined")

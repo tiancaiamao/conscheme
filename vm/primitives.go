@@ -124,10 +124,6 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 		arg0 := ev(car(code), false, lexenv);code = cdr(code)
 		arg1 := ev(car(code), false, lexenv)
 		return _number_to_string(arg0, arg1)
-	case "=/2":
-		arg0 := ev(car(code), false, lexenv);code = cdr(code)
-		arg1 := ev(car(code), false, lexenv)
-		return number_equal(arg0, arg1)
 	case "number?/1":
 		arg0 := ev(car(code), false, lexenv)
 		return number_p(arg0)
