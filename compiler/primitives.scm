@@ -58,28 +58,19 @@
                       (list 'quote 'ERROR))))))
 
 
-(define (shift-args) "code = cdr(code)")
+(define (shift-args) "args = args[1:]")
 (define (argn n)
-  (case n
-    ((0) "ev(car(code), false, lexenv)")
-    ((1) "ev(car(cdr(code)), false, lexenv)")
-    (else
-     (error 'argn "TODO: generalize to n" n))))
+  (string-append "args[" (number->string n) "]"))
+(define (all-args)
+  "args")
 
 (define (normal-call funcname args)
   (let lp ((i 0) (ret '()) (formals ""))
     (if (= i args)
         (reverse (cons (string-append "return " funcname "(" formals ")") ret))
         (lp (+ i 1)
-            (cons (string-append
-                   "arg" (number->string i)
-                   " := " (argn 0)
-                   (if (< i (- args 1))
-                       (string-append ";" (shift-args))
-                       ""))
-                  ret)
-            (string-append formals (if (positive? i) ", arg" "arg")
-                           (number->string i))))))
+            ret
+            (string-append formals (if (positive? i) ", " "") (argn i))))))
 
 (define (print-operations p)
   (display "// This file is part of conscheme\n" p)
@@ -87,7 +78,7 @@
   (display "package conscheme\n" p)
   (display "import \"fmt\"\n" p)
   (display "import \"os\"\n" p)
-  (display "func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {\n" p)
+  (display "func evprim(primop string, args []Obj) Obj {\n" p)
   (display "\tswitch primop {\n" p)
   (for-each (lambda (op)
               (display (string-append "\tcase \"" (symbol->string (car op)) "\":\n") p)
@@ -141,7 +132,6 @@
 ;; Numbers
 
 (define-call number? "number_p" 1)
-;; (define-call = "number_equal" 2)        ; TODO: = is n-ary
 (define-call $number->string "_number_to_string" 2)
 (define-call $+ "number_add" 2)
 (define-call $/ "number_divide" 2)
@@ -179,8 +169,8 @@
 
 ;; Misc
 
-(define-operation apply/n               ;very specific to eval...
-  (list "return apply(code,lexenv)"))
+(define-operation apply/n
+  (list (string-append "return apply(" (all-args) ")")))
 (define-primitive (apply args)
   (if (> (length args) 1)
       'apply/n

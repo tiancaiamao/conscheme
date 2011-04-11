@@ -230,7 +230,11 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
 		code = cdr(code)
 		primop := (*car(code)).(string)
 		code = cdr(code)
-		return evprim(primop, code, lexenv)
+		args := make([]Obj, fixnum_to_int(Length(code)))
+		for i := 0; code != Eol; i, code = i+1, cdr(code) {
+			args[i] = ev(car(code), false, lexenv)
+		}
+		return evprim(primop, args)
 	default:
 		name := (*cmd).(string)
 		panic(fmt.Sprintf("Unimplemented syntax: %s",name))
@@ -249,25 +253,18 @@ func ap(oproc Obj, args []Obj) Obj {
 }
 
 // Implements the apply primitive
-func apply(code Obj, lexenv map[string]Obj) Obj {
-	fun := ev(car(code), false, lexenv)
-	code = cdr(code)
-	fixn := fixnum_to_int(Length(code)) - 1
-	fixargs := make([]Obj, fixn)
-	var args []Obj
-	for i := 0; i < fixn; i, code = i + 1, cdr(code) {
-		fixargs[i] = ev(car(code), false, lexenv)
-	}
-
+func apply(args []Obj) Obj {
+	var funargs []Obj
+	fun := args[0]
 	// The last argument to apply is a list
-	last := ev(car(code), false, lexenv)
-	args = make([]Obj, fixn + fixnum_to_int(Length(last)))
-	copy(args, fixargs)
-	for i := fixn; last != Eol; i, last = i + 1, cdr(last) {
-		args[i] = car(last)
+	last := args[len(args)-1]
+	funargs = make([]Obj, len(args) - 2 + fixnum_to_int(Length(last)))
+	copy(funargs, args[1:len(args)-1])
+	for i := len(args)-2; last != Eol; i, last = i + 1, cdr(last) {
+		funargs[i] = car(last)
 	}
 	
-	return ap(fun, args)
+	return ap(fun, funargs)
 }
 
 // Runs the simple language emitted by the "compiler"
