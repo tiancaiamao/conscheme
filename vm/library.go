@@ -124,6 +124,13 @@ func current_output_port() Obj {
 	return curout
 }
 
+func open_input_file(fn Obj) Obj {
+	if is_immediate(fn) { panic("bad type") }
+	f, e := os.Open(string((*fn).([]int)), os.O_RDONLY, 0666)
+	if e != nil { panic(fmt.Sprintf("I/O error: %s", e)) }
+	return wrap(&InputPort{r: f, is_binary: false})
+}
+
 func _read_char(port Obj) Obj {
 	if is_immediate(port) { panic("bad type") }
 	switch v := (*port).(type) {

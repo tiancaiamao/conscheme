@@ -1,5 +1,6 @@
 ;; -*- mode: scheme; coding: utf-8 -*-
 ;; Copyright (C) 2011 Göran Weinholt <goran@weinholt.se>
+;; Copyright (C) 2011 Per Odlund <per.odlund@gmail.com>
 
 ;; Permission is hereby granted, free of charge, to any person obtaining a copy
 ;; of this software and associated documentation files (the "Software"), to deal
@@ -265,6 +266,8 @@
 (define-call output-port? "output_port_p" 1)
 (define-call current-input-port "current_input_port" 0)
 (define-call current-output-port "current_output_port" 0)
+
+(define-call open-input-file "open_input_file" 1)
 
 (define-call $read-char "_read_char" 1)
 (define-call $write-char "_write_char" 2)

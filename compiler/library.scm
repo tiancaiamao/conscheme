@@ -1,5 +1,6 @@
 ;; -*- mode: scheme; coding: utf-8 -*-
 ;; Copyright (C) 2011 Göran Weinholt <goran@weinholt.se>
+;; Copyright (C) 2011 Per Odlund <per.odlund@gmail.com>
 
 ;; Permission is hereby granted, free of charge, to any person obtaining a copy
 ;; of this software and associated documentation files (the "Software"), to deal
@@ -337,9 +338,9 @@
     (close-output-port handle)
     output))
 
-;; with-input-from-file wwith-output-to-file
-;; open-input-file open-output-file
-;; close-input-file close-output-file
+;; with-input-from-file with-output-to-file
+;; open-output-file
+;; close-input-port close-output-port
 ;; read
 
 (define (read-char . rest)

@@ -30,6 +30,9 @@ func evprim(primop string, code Obj, lexenv map[string]Obj) Obj {
 	case "$read-char/1":
 		arg0 := ev(car(code), false, lexenv)
 		return _read_char(arg0)
+	case "open-input-file/1":
+		arg0 := ev(car(code), false, lexenv)
+		return open_input_file(arg0)
 	case "current-output-port/0":
 		return current_output_port()
 	case "current-input-port/0":
