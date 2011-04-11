@@ -250,6 +250,7 @@
 (define-call current-output-port "current_output_port" 0)
 
 (define-call open-input-file "open_input_file" 1)
+(define-call close-input-port "close_input_port" 1)
 
 (define-call $read-char "_read_char" 1)
 (define-call $peek-char "_peek_char" 1)

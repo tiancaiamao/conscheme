@@ -411,6 +411,10 @@
 ;; load
 ;; transcript-on transcript-off
 
+;;; SRFI-1
+
+(define map-in-order map)
+
 ;;; Misc
 
 (define (error who why . irritants)
@@ -424,3 +428,14 @@
   (newline)
   ;; XXX: should tie in with some exception handling stuff
   (exit 1))
+
+;; XXX: shouldn't intern the symbol, and should generate more unique
+;; symbols.
+(define gensym
+  (let ((x 0))
+    (lambda rest
+      (let ((prefix (if (null? rest)
+                        " g"
+                        (car rest))))
+        (set! x (+ x 1))
+        (string->symbol (string-append prefix (number->string x)))))))

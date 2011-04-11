@@ -131,6 +131,15 @@ func open_input_file(fn Obj) Obj {
 	return wrap(&InputPort{r: f, is_binary: false})
 }
 
+func close_input_port(port Obj) Obj {
+	if is_immediate(port) { panic("bad type") }
+	v := (*port).(*InputPort)
+	switch f := v.r.(type) {
+	case *os.File: f.Close()
+	}
+	return Void
+}
+
 func _read_char(port Obj) Obj {
 	if is_immediate(port) { panic("bad type") }
 	switch v := (*port).(type) {
