@@ -135,7 +135,7 @@
                               c)
                              (else
                               (list (list 'memv tmp (list 'quote (car c)))
-                                    (cadr c)))))
+                                    (cons 'begin (cdr c))))))
                      cases)))))
 
 (define-macro (cond . tests)
