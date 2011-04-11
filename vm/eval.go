@@ -38,6 +38,7 @@ var Quote Obj
 var Set_ex Obj
 var _Funcall Obj
 var _Primcall Obj
+var _Primitive Obj
 
 func init() {
 	Begin = intern("begin")
@@ -48,13 +49,14 @@ func init() {
 	Set_ex = intern("set!")
 	_Funcall = intern("$funcall")
 	_Primcall = intern("$primcall")
+	_Primitive = intern("$primitive")
 }
 
 type Procedure struct {
 	name string
 	required int
 	formals Obj
-	apply func (proc Procedure, args []Obj, lexenv map[string]Obj) Obj
+	apply func (proc Procedure, args []Obj) Obj
 	// These parts are specific to eval
 	lexenv map[string]Obj
 	body Obj
@@ -67,6 +69,15 @@ func procedure_p(x Obj) Obj {
 		return True
 	}
 	return False
+}
+
+func apprim(proc Procedure, args []Obj) Obj {
+	// XXX: should also check if there's a maximum number of
+	// arguments, like e.g. make-string
+	if len(args) < proc.required {
+		panic("Too few of arguments to primitive procedure")
+	}
+	return evprim(proc.name, args)
 }
 
 // Top-level environment. Should there be one of these per process, or
@@ -94,7 +105,7 @@ func lookup(name Obj, lexenv map[string]Obj) Obj {
 	panic(fmt.Sprintf("unbound variable: %s",sname))
 }
 
-func lambda_apply(proc Procedure, args []Obj, _ map[string]Obj) Obj {
+func lambda_apply(proc Procedure, args []Obj) Obj {
 	// Extend newenv using formals + args
 	newenv := make(map[string]Obj)
 	for k,v := range proc.lexenv { newenv[k] = v }
@@ -191,8 +202,7 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
 				formals = f[1] // cdr
 			}
 		}
-		var vv interface{} = closure
-		return Obj(&vv)
+		return wrap(closure)
 	case Set_ex:
 		code = cdr(code); name := car(code)
 		code = cdr(code)
@@ -235,6 +245,14 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
 			args[i] = ev(car(code), false, lexenv)
 		}
 		return evprim(primop, args)
+	case _Primitive:
+		name := car(cdr(code))
+		sname := (*name).(string)
+		primitive, is_bound := primitives[sname]
+		if !is_bound {
+			panic(fmt.Sprintf("unknown primitive: %s",sname))
+		}
+		return primitive
 	default:
 		name := (*cmd).(string)
 		panic(fmt.Sprintf("Unimplemented syntax: %s",name))
@@ -249,7 +267,7 @@ func ap(oproc Obj, args []Obj) Obj {
 		panic(fmt.Sprintf("bad type to apply: %v",oproc))
 	}
 	proc := (*oproc).(Procedure)
-	return proc.apply(proc, args, nil)
+	return proc.apply(proc, args)
 }
 
 // Implements the apply primitive

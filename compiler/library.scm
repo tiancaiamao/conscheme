@@ -58,12 +58,19 @@
 (define (= x y) (eq? ($cmp x y) 0))
 (define (< x y) (eq? ($cmp x y) -1))
 (define (> x y) (eq? ($cmp x y) 1))
-(define (<= x y)
-  (let ((c ($cmp x y)))
-    (or (eq? x -1) (eq? x 0))))
+(define (<= x y . xs)
+  (if (null? xs)
+      (let ((c ($cmp x y)))
+        (or (eq? c -1) (eq? c 0)))
+      (let lp ((x x) (y y) (xs xs))
+        (let ((c ($cmp x y)))
+          (and (or (eq? c -1) (eq? c 0))
+               (or (null? xs)
+                   (lp y (car xs) (cdr xs))))))))
+
 (define (>= x y)
   (let ((c ($cmp x y)))
-    (or (eq? x 1) (eq? x 0))))
+    (or (eq? c 1) (eq? c 0))))
 
 (define (zero? x) (eq? ($cmp x 0) 0))
 

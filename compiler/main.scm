@@ -103,7 +103,8 @@
              (list? x)) => #f)
     (check (list? '(1 2 3 . 4) ) => #f)
     (check (apply list 1 2 '(3 4)) => '(1 2 3 4))
-    (check (apply + '(1 2)) => 3))
+    (check (apply + '(1 2)) => 3)
+    (check (apply symbol? '(primitive-procedure-test)) => #t))
    (else #F)))
 
 (cond ((member "compile" (command-line))

@@ -25,16 +25,35 @@
 (define *primitives* '())
 (define *operations* '())
 
+(define (formals-required formals)
+  ;; Takes a list of formal arguments from a define-primitive and
+  ;; returns how many arguments are required in order to run the
+  ;; primitive.
+  (let lp ((formals formals) (req 0))
+    (cond ((or (null? formals) (symbol? formals)) req)
+          (else
+           (lp (cdr formals) (+ req 1))))))
+
+(define (formals-satisfied formals args)
+  (let lp ((formals formals)
+           (args args))
+    (cond ((and (null? formals) (null? args))
+           #t)
+          ((symbol? formals) #t)
+          ((and (pair? formals) (null? args))
+           #f)
+          (else
+           (lp (cdr formals) (cdr args))))))
+
 ;; Primitives check the argument list of the primitive and then return
 ;; a operation name.
 (define (add-primitive! name proc)
   (set! *primitives* (cons (cons name proc)
                            *primitives*)))
 
-(define-macro (define-primitive name/args . body)
+(define-macro (define-primitive name/args)
   (list 'add-primitive! (list 'quote (car name/args))
-        (append (list 'lambda (cdr name/args))
-                body)))
+        (list 'quote (cdr name/args))))
 
 ;; Operations are written in Go and are used to implement the primitives.
 (define (add-operation! name proc)
@@ -47,29 +66,23 @@
                 body)))
 
 (define-macro (define-call opname funcname args)
-  (let ((opname* (string->symbol
-                  (string-append (symbol->string opname)
-                                 "/" (number->string args)))))
-    (list 'begin
-          (list 'define-operation opname* (list 'normal-call funcname args))
-          (list 'define-primitive (list opname 'args)
-                (list 'if (list '= (list 'length 'args) args)
-                      (list 'quote opname*)
-                      (list 'quote 'ERROR))))))
-
+   (list 'begin
+         (list 'define-operation opname (list 'normal-call funcname args))
+         (list 'define-primitive (cons opname (make-list args 'arg)))))
 
 (define (shift-args) "args = args[1:]")
 (define (argn n)
   (string-append "args[" (number->string n) "]"))
 (define (all-args)
   "args")
+(define (arglen)
+  "len(args)")
 
 (define (normal-call funcname args)
-  (let lp ((i 0) (ret '()) (formals ""))
+  (let lp ((i 0) (formals ""))
     (if (= i args)
-        (reverse (cons (string-append "return " funcname "(" formals ")") ret))
+        (list (string-append "return " funcname "(" formals ")"))
         (lp (+ i 1)
-            ret
             (string-append formals (if (positive? i) ", " "") (argn i))))))
 
 (define (print-operations p)
@@ -78,6 +91,18 @@
   (display "package conscheme\n" p)
   (display "import \"fmt\"\n" p)
   (display "import \"os\"\n" p)
+  (display "var primitives map[string]Obj = make(map[string]Obj)\n" p)
+  (display "func init() {\n" p)
+  (for-each (lambda (prim)
+              (let ((required (formals-required (cdr prim))))
+                (display (string-append
+                          "\tprimitives[\"" (symbol->string (car prim)) "\"] = "
+                          "wrap(Procedure{name:\"" (symbol->string (car prim)) "\","
+                          "required:" (number->string required) ","
+                          "apply:apprim"
+                          "})\n"))))
+            *primitives*)
+  (display "}\n\n" p)
   (display "func evprim(primop string, args []Obj) Obj {\n" p)
   (display "\tswitch primop {\n" p)
   (for-each (lambda (op)
@@ -138,17 +163,11 @@
 (define-call $- "number_subtract" 2)
 (define-call $cmp "number_cmp" 2)
 
-(define-operation least-fixnum/0 (list "return Make_fixnum(fixnum_min)"))
-(define-primitive (least-fixnum args)
-  (if (= (length args) 0)
-      'least-fixnum/0
-      'ERROR))
+(define-operation least-fixnum (list "return Make_fixnum(fixnum_min)"))
+(define-primitive (least-fixnum))
 
-(define-operation greatest-fixnum/0 (list "return Make_fixnum(fixnum_max)"))
-(define-primitive (greatest-fixnum args)
-  (if (= (length args) 0)
-      'greatest-fixnum/0
-      'ERROR))
+(define-operation greatest-fixnum (list "return Make_fixnum(fixnum_max)"))
+(define-primitive (greatest-fixnum))
 
 ;; Strings
 
@@ -157,93 +176,64 @@
 (define-call string-ref "String_ref" 2)
 (define-call string-set! "String_set_ex" 3)
 
-(define-operation make-string/1
-   (list (string-append "return Make_string(" (argn 0) ",Make_char("
-                        (number->string (char->integer #\space)) "))")))
-(define-operation make-string/2 (normal-call "Make_string" 2))
-(define-primitive (make-string args)
-  (case (length args)
-    ((1) 'make-string/1)
-    ((2) 'make-string/2)
-    (else 'ERROR)))
+(define-operation make-string
+   (list
+    (string-append "switch " (arglen) " {")
+    (string-append "default: return Make_string(" (argn 0) "," (argn 1) ")")
+    (string-append "case 1: return Make_string(" (argn 0)
+                   ",Make_char(" (number->string (char->integer #\space)) "))")
+    "}"))
+(define-primitive (make-string len . opt)) ;TODO: 1 optional argument
 
 ;; Misc
 
-(define-operation apply/n
+(define-operation apply
   (list (string-append "return apply(" (all-args) ")")))
-(define-primitive (apply args)
-  (if (> (length args) 1)
-      'apply/n
-      'ERROR))
+(define-primitive (apply fun . args))
 
-;; (define-call procedure? "procedure_p" 1)
+(define-call procedure? "procedure_p" 1)
 
-(define-operation unspecified/0 (list "return Void"))
-(define-primitive (unspecified args)
-  (if (= (length args) 0)
-      'unspecified/0
-      'ERROR))
+(define-operation unspecified (list "return Void"))
+(define-primitive (unspecified))
 
-(define-operation eof-object/0 (list "return Eof"))
-(define-primitive (eof-object args)
-  (if (= (length args) 0)
-      'eof-object/0
-      'ERROR))
+(define-operation eof-object (list "return Eof"))
+(define-primitive (eof-object))
 
-(define-operation eq?/2
+(define-operation eq?
    (list (string-append "if " (argn 0) " == " (argn 1) " {")
          "\treturn True"
          "} else {"
          "\treturn False"
          "}"))
-(define-primitive (eq? args)
-  (if (= (length args) 2)
-      'eq?/2
-      'ERROR))
+(define-primitive (eq? x y))
 
-(define-operation exit/1
+(define-operation exit
   (list (string-append "os.Exit(number_to_int(" (argn 0) "))")))
-(define-primitive (exit args)
-  (case (length args)
-    ((1) 'exit/1)
-    (else 'ERROR)))
+(define-primitive (exit status))
 
-(define-operation command-line/0 (normal-call "Command_line" 0))
-(define-primitive (command-line args)
-  (if (= (length args) 0)
-      'command-line/0
-      'ERROR))
+(define-call command-line "Command_line" 0)
 
 ;; Cells, internal to the compiler, used for mutation
 
-(define-operation $make-cell/1
+(define-operation $make-cell
    (list "var v [1]Obj"
          (string-append "v[0] = " (argn 0))
          "var vv interface{} = &v"
          "return Obj(&vv)"))
-(define-primitive ($make-cell args)
-   (if (= (length args) 1)
-       '$make-cell/1
-       'ERROR))
+(define-primitive ($make-cell init))
 
-(define-operation $cell-ref/1
+(define-operation $cell-ref
    (list (string-append "v := " (argn 0))
          "vv := (*v).(*[1]Obj)"
          "return vv[0]"))
-(define-primitive ($cell-ref args)
-   (if (= (length args) 1)
-       '$cell-ref/1
-       'ERROR))
+(define-primitive ($cell-ref cell))
 
-(define-operation $cell-set!/2
+(define-operation $cell-set!
    (list (string-append "v := " (argn 0))
          "vv := (*v).(*[1]Obj)"
          (string-append "vv[0] = " (argn 1))
          "return Void"))
-(define-primitive ($cell-set! args)
-   (if (= (length args) 2)
-       '$cell-set!/2
-       'ERROR))
+(define-primitive ($cell-set! cell value))
 
 ;; Bytevectors
 
@@ -276,24 +266,22 @@
     (if x (cdr x) #f)))
 
 (define (primcall primop name args)
-  (let ((call (primop args)))
-    (cond ((eq? call 'ERROR)
-           (display "Warning: wrong number of arguments to built-in procedure:\n"
-                    (current-error-port))
-           (pretty-print (cons name args) (current-error-port))
-           (newline (current-error-port))
-           (primops (list 'begin (cons 'begin args)
-                          (list 'error (list 'quote name)
-                                (list 'quote "Wrong number of arguments")))))
-          (else
-           (cons '$primcall (cons call args))))))
+  (cond ((not (formals-satisfied primop args))
+         (display "Warning: wrong number of arguments to built-in procedure:\n"
+                  (current-error-port))
+         (pretty-print (cons name args) (current-error-port))
+         (newline (current-error-port))
+         (primops (list 'begin (cons 'begin args)
+                        (list 'error (list 'quote name)
+                              (list 'quote "Wrong number of arguments")))))
+        (else
+         (cons '$primcall (cons name args)))))
 
 ;; The input is from aconv. The output language differentiates between
 ;; calls to known primitives and calls to closures.
 (define (primops x)
   (if (symbol? x)
       (if (lookup-primop x)
-          ;; TODO: generate lambda expressions for primitives
           (list '$primitive x)
           x)
       (case (car x)
