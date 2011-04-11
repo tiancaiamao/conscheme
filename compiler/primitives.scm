@@ -141,7 +141,7 @@
 ;; Numbers
 
 (define-call number? "number_p" 1)
-(define-call = "number_equal" 2)        ; TODO: = is n-ary
+;; (define-call = "number_equal" 2)        ; TODO: = is n-ary
 (define-call $number->string "_number_to_string" 2)
 (define-call $+ "number_add" 2)
 (define-call $/ "number_divide" 2)

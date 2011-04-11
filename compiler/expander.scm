@@ -54,25 +54,16 @@
 
 (define (if-alternative x) (cadddr x))
 
-;; (define (define-macro-name x) (caadr x))
+(define (define-macro-name x) (caadr x))
 
-;; (define (define-macro-formals x) (cdadr x))
+(define (define-macro-formals x) (cdadr x))
 
 ;;;
 
-(cond-expand
- (guile
-  ;; Replace the native define-macro with our own
-  (define-macro (define-macro name/args . body)
-    (list 'add-macro! (list 'quote (car name/args))
-          (append (list 'lambda (cdr name/args))
-                  body))))
- (else #f))
-
 (define-macro (define-macro name/args . body)
-  (list 'add-macro! (list 'quote (car name/args))
-        (append (list 'lambda (cdr name/args))
-                body)))
+   (list 'add-macro! (list 'quote (car name/args))
+         (append (list 'lambda (cdr name/args))
+                 body)))
 
 (define-macro (cond-expand . tests)     ;SRFI-0
   (define (fullfilled? f)
@@ -238,6 +229,12 @@
              (cons 'begin (map-in-order (lambda (x) (expand* x env)) (cdr x))))
             ((set!)
              (list 'set! (set!-name x) (expand* (set!-expression x) env)))
+            ((define-macro)
+             (add-macro! (define-macro-name x)
+                         (eval (append (list 'lambda (define-macro-formals x))
+                                       (cddr x))
+                               (interaction-environment)))
+             '(unspecified))
             (else
              ;; Probably a procedure call
              (if (list? x)

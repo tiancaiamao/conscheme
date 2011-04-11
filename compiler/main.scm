@@ -24,7 +24,7 @@
 (cond-expand
  (conscheme (include "library.scm"))
  (else #f))
-;; (include "reader.scm")
+(include "reader.scm")
 (include "primitives.scm")
 (include "aconv.scm")
 (include "mutation.scm")

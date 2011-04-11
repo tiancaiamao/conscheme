@@ -55,6 +55,7 @@
 (define (inexact? z) #f)
 
 ;; XXX: handle more arguments
+(define (= x y) (eq? ($cmp x y) 0))
 (define (< x y) (eq? ($cmp x y) -1))
 (define (> x y) (eq? ($cmp x y) 1))
 (define (<= x y)
@@ -64,7 +65,7 @@
   (let ((c ($cmp x y)))
     (or (eq? x 1) (eq? x 0))))
 
-(define (zero? x) (= x 0))
+(define (zero? x) (eq? ($cmp x 0) 0))
 
 (define (positive? x) (> x 0))
 
@@ -220,14 +221,27 @@
 
 ;;; Characters
 
-(define (char=? x y) (= (char->integer x) (char->integer y)))
-(define (char<? x y) (< (char->integer x) (char->integer y)))
-(define (char>? x y) (> (char->integer x) (char->integer y)))
-(define (char<=? x y) (<= (char->integer x) (char->integer y)))
-(define (char>=? x y) (>= (char->integer x) (char->integer y)))
+(define-macro (define-char-order name =)
+  (list 'define name
+        (list 'lambda '(x y . xs)
+              (list 'if '(null? xs)
+                    (list = '(char->integer x) '(char->integer y))
+                    (list 'apply = '(char->integer x) '(char->integer y)
+                          '(map char->integer xs))))))
+
+(define-char-order char=? =)
+(define-char-order char<? <)
+(define-char-order char>? >)
+(define-char-order char<=? <=)
+(define-char-order char>=? >=)
 
 ;; char-ci=? char-ci<? char-ci>? char-ci<=? char-ci>=?
-;; char-alphabetic? char-numeric? char-whitespace?
+;; char-alphabetic? char-numeric?
+
+(define (char-whitespace? c)
+  ;; TODO: should use go's unicode database
+  (memq c '(#\space #\tab #\return #\linefeed #\vtab)))
+
 ;; char-upper-case? char-lower-case?
 ;; char-upcase char-downcase
 

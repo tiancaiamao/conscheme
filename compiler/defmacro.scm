@@ -26,20 +26,8 @@
 (define *macros* '())
 
 (define (add-macro! name proc)
+  ;; (display "Adding macro: ")
+  ;; (display name)
+  ;; (newline)
   (set! *macros* (cons (cons name proc)
                        *macros*)))
-
-(cond-expand
- (conscheme
-  (define-macro (define-macro name/args . body)
-    (list 'add-macro! (list 'quote (car name/args))
-          (append (list 'lambda (cdr name/args))
-                  body))))
- (guile
-  (define-macro (define-macro name/args . body)
-    (list 'begin
-          (cons* 'defmacro (car name/args) (cdr name/args) body)
-          (list 'add-macro! (list 'quote (car name/args))
-                (append (list 'lambda (cdr name/args))
-                        body)))))
- (else #f))
