@@ -466,7 +466,8 @@ func Obj_display(x Obj, p io.Writer, write Obj) {
 	case x == Void:
 		fmt.Fprintf(p, "#<void>")
 	case procedure_p(x) != False:
-		fmt.Fprintf(p, "#<procedure %x>",x)
+		proc := (*x).(Procedure)
+		fmt.Fprintf(p, "#<procedure %s>",proc.name)
 	case port_p(x) != False:
 		display_port(p, x)
 	case bytevector_p(x) != False:

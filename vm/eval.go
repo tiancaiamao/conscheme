@@ -190,7 +190,7 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
 		code = cdr(code); closure.formals = car(code)
 		code = cdr(code); closure.body = car(code)
 		closure.lexenv = lexenv
-		closure.name = "unnamed"
+		closure.name = "closure"
 		closure.apply = lambda_apply
 		closure.required = 0
 		for formals := closure.formals; formals != Eol; {
@@ -281,7 +281,7 @@ func apply(args []Obj) Obj {
 	for i := len(args)-2; last != Eol; i, last = i + 1, cdr(last) {
 		funargs[i] = car(last)
 	}
-	
+
 	return ap(fun, funargs)
 }
 

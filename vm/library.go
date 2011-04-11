@@ -140,12 +140,33 @@ func _read_char(port Obj) Obj {
 			n, err := io.ReadFull(v.r,
 				v.lookahead[v.lookahead_valid:v.lookahead_valid + 1])
 			v.lookahead_valid += n
-			if err != nil {
-				panic("I/O read error")
+			switch {
+			case err == os.EOF: return Eof
+			case err != nil: panic("I/O read error")
 			}
 		}
 		cp, _ := utf8.DecodeRune(v.lookahead[0:v.lookahead_valid])
 		v.lookahead_valid = 0
+		return Make_char(cp)
+	}
+	panic("bad type")
+}
+
+func _peek_char(port Obj) Obj {
+	if is_immediate(port) { panic("bad type") }
+	switch v := (*port).(type) {
+	case *InputPort:
+		if v.is_binary { panic("bad port type") }
+		for ; !utf8.FullRune(v.lookahead[0:v.lookahead_valid]); {
+			n, err := io.ReadFull(v.r,
+				v.lookahead[v.lookahead_valid:v.lookahead_valid + 1])
+			v.lookahead_valid += n
+			switch {
+			case err == os.EOF: return Eof
+			case err != nil: panic("I/O read error")
+			}
+		}
+		cp, _ := utf8.DecodeRune(v.lookahead[0:v.lookahead_valid])
 		return Make_char(cp)
 	}
 	panic("bad type")

@@ -213,6 +213,8 @@
 
 (define-call command-line "Command_line" 0)
 
+(define-call $eval "Eval" 1)
+
 ;; Cells, internal to the compiler, used for mutation
 
 (define-operation $make-cell
@@ -250,6 +252,7 @@
 (define-call open-input-file "open_input_file" 1)
 
 (define-call $read-char "_read_char" 1)
+(define-call $peek-char "_peek_char" 1)
 (define-call $write-char "_write_char" 2)
 
 (define-call get-u8 "get_u8" 1)

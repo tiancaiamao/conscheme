@@ -39,10 +39,13 @@
          (write x)
          (newline))))
 
+(define (compile-expression expr)
+  (primops (mutation (aconv (expand expr)))))
+
 (define (compile)
   (let ((output-file "main.cso")
         (input-file "main.scm"))
-    (let ((code (primops (mutation (aconv (expand (list 'include input-file)))))))
+    (let ((code (compile-expression (list 'include input-file))))
       (if (member "print" (command-line))
           (pretty-print code))
       (if (file-exists? output-file)
@@ -51,7 +54,7 @@
         (lambda (p)
           (serialize-object code p))))))
 
-(define (print . x) (for-each (lambda (x) (display x)) x) (newline))
+(define (print . x) (for-each display x) (newline))
 
 (define-macro (check expr arrow expect)
   (list 'begin
@@ -98,7 +101,7 @@
     (check (output-port? (current-input-port)) => #f)
     (check (output-port? (current-output-port)) => #t)
     (check (list? '(1 2 3 4)) => #t)
-    (check (let ((x (cons 1 '()))) 
+    (check (let ((x (cons 1 '())))
              (set-cdr! x x)
              (list? x)) => #f)
     (check (list? '(1 2 3 . 4) ) => #f)
@@ -107,12 +110,38 @@
     (check (apply symbol? '(primitive-procedure-test)) => #t))
    (else #F)))
 
+(define (repl)
+  (cond-expand
+   (conscheme
+    (print ";; Con Scheme"))
+   (guile
+    (print ";; Con Scheme accidentally running on Guile")))
+  (print ";; Copyright (C) 2011 Göran Weinholt <goran@weinholt.se>")
+  (print ";; Copyright (C) 2011 Per Odlund <per.odlund@gmail.com>")
+  (print)
+  (let loop ((i 0))
+    (for-each display (list "#;" i "> "))
+    ;; (flush-output-port)
+    (let ((datum (read)))
+      (cond ((eof-object? datum)
+             (print "\nBye bye."))
+            (else
+             ;; (write datum)
+             ;; (newline)
+             ;; (write (compile-expression datum))
+             ;; (newline)
+             (write (eval datum (interaction-environment)))
+             (newline)
+             (loop (+ i 1)))))))
+
 (cond ((member "compile" (command-line))
        (compile))
       ((member "genprim" (command-line))
        (print-operations (current-output-port)))
       ((member "tests" (command-line))
        (tests))
+      ((member "repl" (command-line))
+       (repl))
       (else
        (display "Usage: main compile|genprim.\n")
        (exit 1)))

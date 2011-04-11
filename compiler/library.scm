@@ -174,11 +174,15 @@
 
 (define (list . x) x)
 
-(define (append x y)
-  (let lp ((x (reverse x)) (y y))
-    (if (null? y)
-        (reverse x)
-        (lp (cons (car y) x) (cdr y)))))
+(define (append x . xs)
+  (let lp ((x x)
+           (xs xs))
+    (if (null? xs)
+        x
+        (if (null? x)
+            (lp (car xs) (cdr xs))
+            (cons (car x)
+                  (lp (cdr x) xs))))))
 
 (define (reverse l)
   (let lp ((l l) (ret '()))
@@ -344,8 +348,13 @@
 ;; call-with-current-continuation call/cc
 ;; values call-with-values
 ;; dynamic-wind
-;; eval scheme-report-environment null-environment
-;; interaction-environment
+
+(define (eval expr environment)
+  ($eval (compile-expression expr)))
+
+(define (scheme-report-environment v) #f)
+(define (null-environment) #f)
+(define (interaction-environment) #f)
 
 ;;; Input and output
 
@@ -369,7 +378,10 @@
       ($read-char (current-input-port))
       ($read-char (car rest))))
 
-;; peek-char
+(define (peek-char . rest)
+  (if (null? rest)
+      ($peek-char (current-input-port))
+      ($peek-char (car rest))))
 
 (define (eof-object? x) (eq? x (eof-object)))
 

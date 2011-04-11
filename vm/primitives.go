@@ -11,6 +11,7 @@ func init() {
 	primitives["put-u8"] = wrap(Procedure{name:"put-u8",required:2,apply:apprim})
 	primitives["get-u8"] = wrap(Procedure{name:"get-u8",required:1,apply:apprim})
 	primitives["$write-char"] = wrap(Procedure{name:"$write-char",required:2,apply:apprim})
+	primitives["$peek-char"] = wrap(Procedure{name:"$peek-char",required:1,apply:apprim})
 	primitives["$read-char"] = wrap(Procedure{name:"$read-char",required:1,apply:apprim})
 	primitives["open-input-file"] = wrap(Procedure{name:"open-input-file",required:1,apply:apprim})
 	primitives["current-output-port"] = wrap(Procedure{name:"current-output-port",required:0,apply:apprim})
@@ -22,6 +23,7 @@ func init() {
 	primitives["$cell-set!"] = wrap(Procedure{name:"$cell-set!",required:2,apply:apprim})
 	primitives["$cell-ref"] = wrap(Procedure{name:"$cell-ref",required:1,apply:apprim})
 	primitives["$make-cell"] = wrap(Procedure{name:"$make-cell",required:1,apply:apprim})
+	primitives["$eval"] = wrap(Procedure{name:"$eval",required:1,apply:apprim})
 	primitives["command-line"] = wrap(Procedure{name:"command-line",required:0,apply:apprim})
 	primitives["exit"] = wrap(Procedure{name:"exit",required:1,apply:apprim})
 	primitives["eq?"] = wrap(Procedure{name:"eq?",required:2,apply:apprim})
@@ -79,6 +81,8 @@ func evprim(primop string, args []Obj) Obj {
 		return get_u8(args[0])
 	case "$write-char":
 		return _write_char(args[0], args[1])
+	case "$peek-char":
+		return _peek_char(args[0])
 	case "$read-char":
 		return _read_char(args[0])
 	case "open-input-file":
@@ -109,6 +113,8 @@ func evprim(primop string, args []Obj) Obj {
 		v[0] = args[0]
 		var vv interface{} = &v
 		return Obj(&vv)
+	case "$eval":
+		return Eval(args[0])
 	case "command-line":
 		return Command_line()
 	case "exit":
