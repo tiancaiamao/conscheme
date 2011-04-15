@@ -148,6 +148,14 @@ func file_exists_p(fn Obj) Obj {
 	return Make_boolean(err == nil)
 }
 
+func delete_file(fn Obj) Obj {
+	if is_immediate(fn) { panic("bad type") }
+	if err := os.Remove(string((*fn).([]int))); err != nil {
+		panic(fmt.Sprintf("I/O error",err))
+	}
+	return Void
+}
+
 func open_input_file(fn Obj) Obj {
 	if is_immediate(fn) { panic("bad type") }
 	f, e := os.Open(string((*fn).([]int)), os.O_RDONLY, 0666)
