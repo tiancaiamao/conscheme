@@ -30,6 +30,7 @@ import (
 	"big"
 	"fmt"
 	"math"
+	"strings"
 	"unsafe"
 )
 
@@ -380,13 +381,21 @@ func _number_to_string(num Obj, radix Obj) Obj {
 	panic("number->string needs numbers")
 }
 
-// TODO: handle flonums, compnums, ratnums, #x, #o, #d, etc
-func _string_to_number(_str Obj, radix Obj) Obj {
+// TODO: handle flonums, compnums, ratnums, etc
+func _string_to_number(_str Obj, _radix Obj) Obj {
 	if is_immediate(_str) { panic("bad type") }
 	str := string((*_str).([]int))
 
+	radix := number_to_int(_radix)
+	switch {
+	case strings.HasPrefix(str, "#b"): radix = 2; str = str[2:]
+	case strings.HasPrefix(str, "#o"): radix = 8; str = str[2:]
+	case strings.HasPrefix(str, "#d"): radix = 10; str = str[2:]
+	case strings.HasPrefix(str, "#x"): radix = 16; str = str[2:]
+	}
+
 	var v big.Int
-	z, s := v.SetString(str,number_to_int(radix))
+	z, s := v.SetString(str, radix)
 	if !s { return False }
 	if z.Cmp(fixnum_max_Int) < 1 && z.Cmp(fixnum_min_Int) > -1 {
 		return Make_fixnum(int(z.Int64()))
