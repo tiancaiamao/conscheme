@@ -411,9 +411,50 @@
 ;; load
 ;; transcript-on transcript-off
 
+;;; R6RS
+
+(define (remp proc list)
+  (cond ((null? list) '())
+        ((proc (car list))
+         (remp proc (cdr list)))
+        (else
+         (cons (car list) (remp proc (cdr list))))))
+
+(define (remq obj list)
+  (cond ((null? list) '())
+        ((eq? obj (car list))
+         (remq obj (cdr list)))
+        (else
+         (cons (car list) (remq obj (cdr list))))))
+
 ;;; SRFI-1
 
 (define map-in-order map)
+
+(define (delete-duplicates list . rest)
+  (if (or (null? rest)
+          (and (eq? (car rest) eq?)
+               (null? (cdr rest))))
+      (let lp ((list list)
+               (ret '()))
+        (cond ((null? list)
+               (reverse ret))
+              (else
+               (lp (remq (car list) (cdr list))
+                   (cons (car list) ret)))))
+      (let ((= (cond ((null? rest) eq?)
+                     ((null? (cdr rest)) (car rest))
+                     (else (error 'delete-duplicates
+                                  "Too many arguments" list rest)))))
+        (let lp ((list list)
+                 (ret '()))
+          (cond ((null? list)
+                 (reverse ret))
+                (else
+                 (lp (remp (lambda (x)
+                             (= x (car list)))
+                           (cdr list))
+                     (cons (car list) ret))))))))
 
 ;;; Misc
 
