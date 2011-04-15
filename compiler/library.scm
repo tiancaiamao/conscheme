@@ -248,13 +248,7 @@
 
 ;; char-ci=? char-ci<? char-ci>? char-ci<=? char-ci>=?
 ;; char-alphabetic? char-numeric?
-
-(define (char-whitespace? c)
-  ;; TODO: should use go's unicode database
-  (memq c '(#\space #\tab #\return #\linefeed #\vtab)))
-
 ;; char-upper-case? char-lower-case?
-;; char-upcase char-downcase
 
 ;;; Strings
 

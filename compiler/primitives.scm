@@ -145,6 +145,9 @@
 (define-call char? "char_p" 1)
 (define-call char->integer "char_to_integer" 1)
 (define-call integer->char "integer_to_char" 1)
+(define-call char-whitespace? "char_whitespace_p" 1)
+(define-call char-upcase "char_upcase" 1)
+(define-call char-downcase "char_downcase" 1)
 
 ;; Vectors
 
