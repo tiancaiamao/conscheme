@@ -126,7 +126,6 @@
         (else
          (error 'number->string "Too many arguments" num rest))))
 
-;; string->number
 (define (string->number str . radix)
   (cond ((null? radix)
          ($string->number str 10))
@@ -421,6 +420,10 @@
         (else
          (cons (car list) (remq obj (cdr list))))))
 
+(define (port-has-port-position? p) #f)
+
+(define (port-has-set-port-position!? p) #f)
+
 ;;; SRFI-1
 
 (define map-in-order map)
@@ -480,11 +483,11 @@
   (display ": ")
   (display why)
   (newline)
-  (display "List of irrantants: ")
-  (display irritants)
+  (display "List of irritants: ")
+  (write irritants)
   (newline)
   ;; XXX: should tie in with some exception handling stuff
-  (exit 1))
+  (thread-terminate! (current-thread)))
 
 ;; XXX: shouldn't intern the symbol, and should generate more unique
 ;; symbols.

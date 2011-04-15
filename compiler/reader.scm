@@ -21,6 +21,11 @@
 
 ;; S-expression reader for conscheme
 
+(define (read-error p reason . irritants)
+  (if (port-has-port-position? p)
+      (apply error 'read reason p (port-position p) irritants)
+      (apply error 'read reason p irritants)))
+
 (define (char-delimiter? c)
   (or (eof-object? c)
       (memv c '(#\( #\) #\[ #\] #\" #\; #\#))
@@ -46,13 +51,13 @@
              (lp (cons (read-char p) chars)))
             ;; also missing is \xUUUU; from r6rs
             (else
-             (error 'read "Bad character in symbol" c p (port-position p)))))))
+             (read-error p "Bad character in symbol" c))))))
 
 (define (get-string p)
   (let lp ((chars '()))
     (let ((c (peek-char p)))
       (cond ((eof-object? c)
-             (error 'read "EOF in the middle of a string" p (port-position p)))
+             (read-error p "EOF in the middle of a string"))
             ((char=? c #\")
              (read-char p)
              (list->string (reverse chars)))
@@ -95,7 +100,7 @@
       ((#\v)
        (letrec ((expect (lambda (c)
                           (if (not (eqv? c (read-char p)))
-                              (error 'read "Expected #vu8(" p (port-position))))))
+                              (read-error p "Expected #vu8(")))))
          (expect #\u)
          (expect #\8)
          (expect #\()
@@ -111,7 +116,7 @@
            (cond ((and (pair? chars) (char-delimiter? c))
                   (let ((chars (reverse chars)))
                     (cond ((null? chars)
-                           (error 'read "Empty character" p (port-position p)))
+                           (read-error p "Empty character"))
                           ((null? (cdr chars)) (car chars))
                           ((char=? (car chars) #\x)
                            (integer->char
@@ -132,23 +137,20 @@
                              ((space) #\space)
                              ((delete) #\delete)
                              (else
-                              (error 'read "Unknown character name"
-                                     char p (port-position p))))))))
+                              (read-error p "Unknown character name" char)))))))
                  (else
                   (lp (cons (read-char p) chars)))))))
       (else
        (if (eof-object? c)
-           (error 'read "Unexpected EOF" p (port-position p))
-           (error 'read "Unexpected character" p (port-position p)))))))
+           (read-error p "Unexpected EOF")
+           (read-error p "Unexpected character"))))))
 
 (define (get-number p init)
   (let lp ((chars init))
     (let ((c (peek-char p)))
       (cond ((and (char-delimiter? c) (not (eqv? c #\#)))
              (or (string->number (list->string (reverse chars)))
-                 (error 'read "Expected a number"
-                        (list->string (reverse chars))
-                        p (port-position p))))
+                 (read-error p "Expected a number" (list->string (reverse chars)))))
             (else
              (lp (cons (read-char p) chars)))))))
 
@@ -188,7 +190,7 @@
               (let ((c (read-char p)))
                 (if (not (and (eqv? #\. c)
                               (char-delimiter? (peek-char p))))
-                    (error 'read "Expected ..." p (port-position p))))
+                    (read-error p "Expected ...")))
               (cons 'symbol "..."))
              ((char-delimiter? (peek-char p))
               'dot)
@@ -203,13 +205,13 @@
               (cons 'symbol (string c)))
              (else (get-number p (list c)))))
       (else
-       (error 'read "Unexpected character" c p (port-position p))))))
+       (read-error p "Unexpected character" c)))))
 
 (define (read-compound p terminator type)
   (let lp ((data '()))
     (let ((x (get-lexeme p)))
       (cond ((eof-object? p)
-             (error 'read "Unexpected EOF in compound datum" p (port-position p)))
+             (read-error p "Unexpected EOF in compound datum"))
             ((eq? x terminator)
              (case type
                ((vector)
@@ -219,16 +221,16 @@
                ((bytevector)
                 (u8-list->bytevector (reverse data)))
                (else
-                (error 'read "Internal error in read-compound" type))))
+                (read-error p "Internal error in read-compound" type))))
             ((memq x '(rightp rightb))
-             (error 'read "Unexpected closing brace" p (port-position p)))
+             (read-error p "Unexpected closing brace"))
             ((eq? x 'dot)
              (if (not (eq? type 'list))
-                 (error 'read "Unexpected dot notation" p (port-position p)))
+                 (read-error p "Unexpected dot notation"))
              (let ((x (handle-lexeme p (get-lexeme p))))
                (let ((t (get-lexeme p)))
                  (if (not (eq? t terminator))
-                     (error 'read "Unterminated dot notation" p (port-position p))))
+                     (read-error p "Unterminated dot notation")))
                (append (reverse data) x)))
             (else
              (let ((datum (handle-lexeme p x)))
@@ -236,7 +238,7 @@
                         (not (and (number? datum) (exact? datum) (integer? datum)
                                   (>= datum 0)
                                   (< datum 256))))
-                   (error 'read "Non-byte in bytevector" datum p (port-position p)))
+                   (read-error p "Non-byte in bytevector" datum))
                (lp (cons datum data))))))))
 
 (define (handle-lexeme p l)
@@ -257,15 +259,10 @@
            ((and (pair? l) (eq? (car l) 'prefix))
             (list (cdr l) (read/p p)))
            (else
-            (error 'read "Unexpected lexeme" l p (port-position p)))))))
+            (read-error p "Unexpected lexeme" l))))))
 
 (define (read/p p)
   (handle-lexeme p (get-lexeme p)))
-
-;; (read (open-string-input-port "`,,@''#,#,@#'(x y + - -> -3 +3 )"))
-
- ;; (read (open-string-input-port "'( #\\( #\\) #\\[ #\\] #\\\" #\\; #\\#
- ;;                                #\\x0085 #\\x2028 #\\x2029 )"))
 
 (define (read . x)
   (cond ((null? x)
