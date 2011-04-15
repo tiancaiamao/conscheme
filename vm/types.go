@@ -478,6 +478,11 @@ func Obj_display(x Obj, p io.Writer, write Obj) {
 			fmt.Fprintf(p, "%d", bv[i])
 		}
 		fmt.Fprintf(p, ")")
+	case thread_p(x) != False:
+		fmt.Fprintf(p, "#<thread ")
+		t := (*x).(Thread)
+		Obj_display(t.name, p, write)
+		fmt.Fprintf(p, ">")
 	// Unknown types
 	case uintptr(unsafe.Pointer(x)) & heap_mask == heap_tag:
 		fmt.Fprintf(p, "#<heapobj %d>", *x)

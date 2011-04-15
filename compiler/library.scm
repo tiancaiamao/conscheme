@@ -462,6 +462,16 @@
             (lp (append (reverse (apply f (car l) (map car ls))) acc)
                 (cdr l) (map cdr ls))))))
 
+;;; SRFI-18
+
+(define (make-thread thunk . rest)
+  (cond ((null? rest)
+         ($make-thread thunk "unnamed"))
+        ((null? (cdr rest))
+         ($make-thread thunk (car rest)))
+        (else
+         (error 'make-thread "Too many arguments" thunk rest))))
+
 ;;; Misc
 
 (define (error who why . irritants)

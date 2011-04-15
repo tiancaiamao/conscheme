@@ -40,9 +40,17 @@ func _make_thread(thunk, name Obj) Obj {
 		t := (*current_thread).(Thread)
 		<- t.cstart
 		// TODO: pass current_thread to ap here
-		ap(thunk, nil)
+		ap(thunk, nil, current_thread)
 	} (thunk,thread);
 	return thread
+}
+
+func thread_p(thread Obj) Obj {
+	if is_immediate(thread) { return False }
+	switch v := (*thread).(type) {
+	case Thread: return True
+	}
+	return False
 }
 
 func thread_name(thread Obj) Obj {
@@ -69,6 +77,7 @@ func thread_yield_ex() Obj {
 	return Void
 }
 
+// XXX: should protect against calling thread-start! twice. use a semaphore.
 func thread_start_ex(thread Obj) Obj {
 	if is_immediate(thread) { panic("bad type") }
 	t := (*thread).(Thread)

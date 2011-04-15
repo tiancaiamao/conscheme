@@ -56,7 +56,7 @@ type Procedure struct {
 	name string
 	required int
 	formals Obj
-	apply func (proc Procedure, args []Obj) Obj
+	apply func (proc Procedure, args []Obj, ct Obj) Obj
 	// These parts are specific to eval
 	lexenv map[string]Obj
 	body Obj
@@ -71,13 +71,13 @@ func procedure_p(x Obj) Obj {
 	return False
 }
 
-func apprim(proc Procedure, args []Obj) Obj {
+func apprim(proc Procedure, args []Obj, ct Obj) Obj {
 	// XXX: should also check if there's a maximum number of
 	// arguments, like e.g. make-string
 	if len(args) < proc.required {
 		panic("Too few of arguments to primitive procedure")
 	}
-	return evprim(proc.name, args)
+	return evprim(proc.name, args, ct)
 }
 
 // Top-level environment. Should there be one of these per process, or
@@ -105,7 +105,7 @@ func lookup(name Obj, lexenv map[string]Obj) Obj {
 	panic(fmt.Sprintf("unbound variable: %s",sname))
 }
 
-func lambda_apply(proc Procedure, args []Obj) Obj {
+func lambda_apply(proc Procedure, args []Obj, ct Obj) Obj {
 	// Extend newenv using formals + args
 	newenv := make(map[string]Obj)
 	for k,v := range proc.lexenv { newenv[k] = v }
@@ -125,7 +125,7 @@ func lambda_apply(proc Procedure, args []Obj) Obj {
 				rest = Cons(v[i],rest)
 			}
 			newenv[f] = rest
-			return ev(proc.body, true, newenv)
+			return ev(proc.body, true, newenv, ct)
 		case *[2]Obj:
 			name := (*f[0]).(string) // car
 			newenv[name] = args[i]
@@ -139,10 +139,10 @@ func lambda_apply(proc Procedure, args []Obj) Obj {
 	if i != len(args) {
 		panic("Too many arguments to procedure")
 	}
-	return ev(proc.body, true, newenv)
+	return ev(proc.body, true, newenv, ct)
 }
 
-func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
+func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 	code := origcode
 	defer func() {
 		if err := recover(); err != nil {
@@ -167,23 +167,23 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
 			// fmt.Printf("begin: ")
 			// Write(car(code))
 			// fmt.Printf("\n")
-			ret = ev(car(code), tailpos && cdr(code) == Eol, lexenv)
+			ret = ev(car(code), tailpos && cdr(code) == Eol, lexenv, ct)
 		}
 		return ret
 	case Define:
 		code = cdr(code); name := car(code)
 		code = cdr(code)
 		sname := (*name).(string)
-		env[sname] = ev(car(code), true, lexenv)
+		env[sname] = ev(car(code), true, lexenv, ct)
 		return Void
 	case If:
 		code = cdr(code); test := car(code)
 		code = cdr(code); consequent := car(code)
 		code = cdr(code); alternative := car(code)
-		if ev(test, false, lexenv) == False {
-			return ev(alternative, tailpos, lexenv)
+		if ev(test, false, lexenv, ct) == False {
+			return ev(alternative, tailpos, lexenv, ct)
 		} else {
-			return ev(consequent, tailpos, lexenv)
+			return ev(consequent, tailpos, lexenv, ct)
 		}
 	case Lambda:
 		var closure Procedure
@@ -207,7 +207,7 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
 		code = cdr(code); name := car(code)
 		code = cdr(code)
 		sname := (*name).(string)
-		value := ev(car(code), true, lexenv)
+		value := ev(car(code), true, lexenv, ct)
 		if lexenv != nil {
 			// fmt.Printf("set! looking up %s in %v\n", sname,lexenv)
 			if binding, is_bound := lexenv[sname]; is_bound {
@@ -229,22 +229,22 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
 	case _Funcall:
 		// Procedure call
 		code := cdr(code)
-		fun := ev(car(code), false, lexenv)
+		fun := ev(car(code), false, lexenv, ct)
 		code = cdr(code)
 		args := make([]Obj, fixnum_to_int(Length(code)))
 		for i := 0; code != Eol; i, code = i+1, cdr(code) {
-			args[i] = ev(car(code), false, lexenv)
+			args[i] = ev(car(code), false, lexenv, ct)
 		}
-		return ap(fun, args)
+		return ap(fun, args, ct)
 	case _Primcall:
 		code = cdr(code)
 		primop := (*car(code)).(string)
 		code = cdr(code)
 		args := make([]Obj, fixnum_to_int(Length(code)))
 		for i := 0; code != Eol; i, code = i+1, cdr(code) {
-			args[i] = ev(car(code), false, lexenv)
+			args[i] = ev(car(code), false, lexenv, ct)
 		}
-		return evprim(primop, args)
+		return evprim(primop, args, ct)
 	case _Primitive:
 		name := car(cdr(code))
 		sname := (*name).(string)
@@ -261,17 +261,17 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj) Obj {
 	panic("One of the eval cases did not return")
 }
 
-func ap(oproc Obj, args []Obj) Obj {
+func ap(oproc Obj, args []Obj, ct Obj) Obj {
 	// oproc should be a Procedure.
 	if is_immediate(oproc) {
 		panic(fmt.Sprintf("bad type to apply: %v",oproc))
 	}
 	proc := (*oproc).(Procedure)
-	return proc.apply(proc, args)
+	return proc.apply(proc, args, ct)
 }
 
 // Implements the apply primitive
-func apply(args []Obj) Obj {
+func apply(args []Obj, ct Obj) Obj {
 	var funargs []Obj
 	fun := args[0]
 	// The last argument to apply is a list
@@ -282,10 +282,11 @@ func apply(args []Obj) Obj {
 		funargs[i] = car(last)
 	}
 
-	return ap(fun, funargs)
+	return ap(fun, funargs, ct)
 }
 
 // Runs the simple language emitted by the "compiler"
 func Eval(code Obj) Obj {
-	return ev(code, true, nil)
+	return ev(code, true, nil, 
+		wrap(Thread{name:String_string("primordial"), specific: False}))
 }

@@ -77,6 +77,10 @@
   "args")
 (define (arglen)
   "len(args)")
+(define (ct)
+  ;; We have no thread-local variables, so current-thread is passed
+  ;; around like this.
+  "ct")
 
 (define (normal-call funcname args)
   (let lp ((i 0) (formals ""))
@@ -103,7 +107,7 @@
                           "})\n"))))
             *primitives*)
   (display "}\n\n" p)
-  (display "func evprim(primop string, args []Obj) Obj {\n" p)
+  (display "func evprim(primop string, args []Obj, ct Obj) Obj {\n" p)
   (display "\tswitch primop {\n" p)
   (for-each (lambda (op)
               (display (string-append "\tcase \"" (symbol->string (car op)) "\":\n") p)
@@ -191,7 +195,7 @@
 ;; Misc
 
 (define-operation apply
-  (list (string-append "return apply(" (all-args) ")")))
+  (list (string-append "return apply(" (all-args) "," (ct) ")")))
 (define-primitive (apply fun . args))
 
 (define-call procedure? "procedure_p" 1)
@@ -269,11 +273,16 @@
 ;; Threading
 
 (define-call $make-thread "_make_thread" 2)
+(define-call thread? "thread_p" 1)
 (define-call thread-name "thread_name" 1)
 (define-call thread-specific "thread_specific" 1)
 (define-call thread-specific-set! "thread_specific_set_ex" 2)
 (define-call thread-yield! "thread_yield_ex" 0)
 (define-call thread-start! "thread_start_ex" 1)
+
+(define-operation current-thread
+   (list (string-append "return " (ct))))
+(define-primitive (current-thread))
 
 ;;; A compiler pass
 
