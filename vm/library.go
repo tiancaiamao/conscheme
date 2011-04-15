@@ -27,8 +27,26 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"unicode"
 	"utf8"
 )
+
+// Characters
+
+func char_whitespace_p(x Obj) Obj {
+	if char_p(x) == False { panic("bad type") }
+	return Make_boolean(unicode.IsSpace(char_to_int(x)))
+}
+
+func char_upcase(x Obj) Obj {
+	if char_p(x) == False { panic("bad type") }
+	return Make_char(unicode.ToUpper(char_to_int(x)))
+}
+
+func char_downcase(x Obj) Obj {
+	if char_p(x) == False { panic("bad type") }
+	return Make_char(unicode.ToLower(char_to_int(x)))
+}
 
 // Input and output
 

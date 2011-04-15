@@ -50,6 +50,9 @@ func init() {
 	primitives["vector-length"] = wrap(Procedure{name:"vector-length",required:1,apply:apprim})
 	primitives["make-vector"] = wrap(Procedure{name:"make-vector",required:2,apply:apprim})
 	primitives["vector?"] = wrap(Procedure{name:"vector?",required:1,apply:apprim})
+	primitives["char-downcase"] = wrap(Procedure{name:"char-downcase",required:1,apply:apprim})
+	primitives["char-upcase"] = wrap(Procedure{name:"char-upcase",required:1,apply:apprim})
+	primitives["char-whitespace?"] = wrap(Procedure{name:"char-whitespace?",required:1,apply:apprim})
 	primitives["integer->char"] = wrap(Procedure{name:"integer->char",required:1,apply:apprim})
 	primitives["char->integer"] = wrap(Procedure{name:"char->integer",required:1,apply:apprim})
 	primitives["char?"] = wrap(Procedure{name:"char?",required:1,apply:apprim})
@@ -175,6 +178,12 @@ func evprim(primop string, args []Obj) Obj {
 		return Make_vector(args[0], args[1])
 	case "vector?":
 		return vector_p(args[0])
+	case "char-downcase":
+		return char_downcase(args[0])
+	case "char-upcase":
+		return char_upcase(args[0])
+	case "char-whitespace?":
+		return char_whitespace_p(args[0])
 	case "integer->char":
 		return integer_to_char(args[0])
 	case "char->integer":
