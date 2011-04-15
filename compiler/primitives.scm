@@ -249,6 +249,7 @@
 ;; Bytevectors
 
 (define-call bytevector? "bytevector_p" 1)
+(define-call u8-list->bytevector "u8_list_to_bytevector" 1)
 
 ;; I/O
 

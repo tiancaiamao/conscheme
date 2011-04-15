@@ -303,6 +303,22 @@ func bytevector_p(x Obj) Obj {
 	return False
 }
 
+func u8_list_to_bytevector(l Obj) Obj {
+	var bv []byte = make([]byte, number_to_int(Length(l)))
+
+	for i := 0; l != Eol; i++ {
+		v := (*l).(*[2]Obj)
+		octet := number_to_int(v[0])
+		if octet < 0 || octet > 255 {
+			panic("not an octet")
+		}
+		bv[i] = byte(octet)
+		l = v[1]
+	}
+
+	return wrap(bv)
+}
+
 // Misc
 
 func Command_line() Obj {

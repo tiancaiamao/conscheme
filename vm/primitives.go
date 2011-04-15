@@ -28,6 +28,7 @@ func init() {
 	primitives["output-port?"] = wrap(Procedure{name:"output-port?",required:1,apply:apprim})
 	primitives["input-port?"] = wrap(Procedure{name:"input-port?",required:1,apply:apprim})
 	primitives["port?"] = wrap(Procedure{name:"port?",required:1,apply:apprim})
+	primitives["u8-list->bytevector"] = wrap(Procedure{name:"u8-list->bytevector",required:1,apply:apprim})
 	primitives["bytevector?"] = wrap(Procedure{name:"bytevector?",required:1,apply:apprim})
 	primitives["$cell-set!"] = wrap(Procedure{name:"$cell-set!",required:2,apply:apprim})
 	primitives["$cell-ref"] = wrap(Procedure{name:"$cell-ref",required:1,apply:apprim})
@@ -129,6 +130,8 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 		return input_port_p(args[0])
 	case "port?":
 		return port_p(args[0])
+	case "u8-list->bytevector":
+		return u8_list_to_bytevector(args[0])
 	case "bytevector?":
 		return bytevector_p(args[0])
 	case "$cell-set!":
