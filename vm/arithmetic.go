@@ -21,6 +21,9 @@
 
 // Arithmetic for conscheme
 
+// TODO: the arithmetic procedures should return fixnums when fixnums
+// can represent the result, e.g. when two bignums are added.
+
 package conscheme
 
 import (
@@ -357,4 +360,18 @@ func _number_to_string(num Obj, radix Obj) Obj {
 	}
 
 	panic("number->string needs numbers")
+}
+
+// TODO: handle flonums, compnums, ratnums, #x, #o, #d, etc
+func _string_to_number(_str Obj, radix Obj) Obj {
+	if is_immediate(_str) { panic("bad type") }
+	str := string((*_str).([]int))
+
+	var v big.Int
+	z, s := v.SetString(str,number_to_int(radix))
+	if !s { return False }
+	if z.Cmp(fixnum_max_Int) < 1 && z.Cmp(fixnum_min_Int) > -1 {
+		return Make_fixnum(int(z.Int64()))
+	}
+	return wrap(z)
 }

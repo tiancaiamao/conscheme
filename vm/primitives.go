@@ -51,6 +51,7 @@ func init() {
 	primitives["$-"] = wrap(Procedure{name:"$-",required:2,apply:apprim})
 	primitives["$/"] = wrap(Procedure{name:"$/",required:2,apply:apprim})
 	primitives["$+"] = wrap(Procedure{name:"$+",required:2,apply:apprim})
+	primitives["$string->number"] = wrap(Procedure{name:"$string->number",required:2,apply:apprim})
 	primitives["$number->string"] = wrap(Procedure{name:"$number->string",required:2,apply:apprim})
 	primitives["number?"] = wrap(Procedure{name:"number?",required:1,apply:apprim})
 	primitives["vector-set!"] = wrap(Procedure{name:"vector-set!",required:3,apply:apprim})
@@ -188,6 +189,8 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 		return number_divide(args[0], args[1])
 	case "$+":
 		return number_add(args[0], args[1])
+	case "$string->number":
+		return _string_to_number(args[0], args[1])
 	case "$number->string":
 		return _number_to_string(args[0], args[1])
 	case "number?":
