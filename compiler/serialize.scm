@@ -27,8 +27,7 @@
  (guile
   (import (rnrs bytevectors)
           (rnrs io ports)
-          (rnrs arithmetic bitwise)
-          (rnrs arithmetic fixnums)))
+          (rnrs arithmetic bitwise)))
  (else #f))
 
 (define VERSION 1)
@@ -64,7 +63,7 @@
     (cond ((< t #x80)
            (put-u8 p t))
           (else
-           (put-u8 p (fxior #x80 (bitwise-and t #x7f)))
+           (put-u8 p (bitwise-ior #x80 (bitwise-and t #x7f)))
            (lp (bitwise-arithmetic-shift-right t 7))))))
 
 (define write-type write-integer)

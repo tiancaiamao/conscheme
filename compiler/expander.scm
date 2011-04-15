@@ -179,6 +179,13 @@
 (define-macro (when test . body)
   (list 'cond (cons test body)))
 
+(define-macro (endianness s)
+  (case s
+    ((little) ''little)
+    ((big) ''big)
+    (else
+     (error 'endianness "Syntax error" s))))
+
 ;; TODO: do
 ;; TODO: quasiquote
 

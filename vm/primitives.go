@@ -16,12 +16,16 @@ func init() {
 	primitives["$write"] = wrap(Procedure{name:"$write",required:2,apply:apprim})
 	primitives["$display"] = wrap(Procedure{name:"$display",required:2,apply:apprim})
 	primitives["lookahead-u8"] = wrap(Procedure{name:"lookahead-u8",required:1,apply:apprim})
+	primitives["put-bytevector"] = wrap(Procedure{name:"put-bytevector",required:2,apply:apprim})
 	primitives["put-u8"] = wrap(Procedure{name:"put-u8",required:2,apply:apprim})
 	primitives["get-u8"] = wrap(Procedure{name:"get-u8",required:1,apply:apprim})
 	primitives["$write-char"] = wrap(Procedure{name:"$write-char",required:2,apply:apprim})
 	primitives["$peek-char"] = wrap(Procedure{name:"$peek-char",required:1,apply:apprim})
 	primitives["$read-char"] = wrap(Procedure{name:"$read-char",required:1,apply:apprim})
+	primitives["close-port"] = wrap(Procedure{name:"close-port",required:1,apply:apprim})
+	primitives["close-output-port"] = wrap(Procedure{name:"close-output-port",required:1,apply:apprim})
 	primitives["close-input-port"] = wrap(Procedure{name:"close-input-port",required:1,apply:apprim})
+	primitives["open-file-output-port"] = wrap(Procedure{name:"open-file-output-port",required:1,apply:apprim})
 	primitives["open-input-file"] = wrap(Procedure{name:"open-input-file",required:1,apply:apprim})
 	primitives["delete-file"] = wrap(Procedure{name:"delete-file",required:1,apply:apprim})
 	primitives["file-exists?"] = wrap(Procedure{name:"file-exists?",required:1,apply:apprim})
@@ -30,7 +34,9 @@ func init() {
 	primitives["output-port?"] = wrap(Procedure{name:"output-port?",required:1,apply:apprim})
 	primitives["input-port?"] = wrap(Procedure{name:"input-port?",required:1,apply:apprim})
 	primitives["port?"] = wrap(Procedure{name:"port?",required:1,apply:apprim})
+	primitives["string->utf8"] = wrap(Procedure{name:"string->utf8",required:1,apply:apprim})
 	primitives["u8-list->bytevector"] = wrap(Procedure{name:"u8-list->bytevector",required:1,apply:apprim})
+	primitives["bytevector-length"] = wrap(Procedure{name:"bytevector-length",required:1,apply:apprim})
 	primitives["bytevector?"] = wrap(Procedure{name:"bytevector?",required:1,apply:apprim})
 	primitives["$cell-set!"] = wrap(Procedure{name:"$cell-set!",required:2,apply:apprim})
 	primitives["$cell-ref"] = wrap(Procedure{name:"$cell-ref",required:1,apply:apprim})
@@ -50,6 +56,10 @@ func init() {
 	primitives["string?"] = wrap(Procedure{name:"string?",required:1,apply:apprim})
 	primitives["greatest-fixnum"] = wrap(Procedure{name:"greatest-fixnum",required:0,apply:apprim})
 	primitives["least-fixnum"] = wrap(Procedure{name:"least-fixnum",required:0,apply:apprim})
+	primitives["bitwise-arithmetic-shift-right"] = wrap(Procedure{name:"bitwise-arithmetic-shift-right",required:2,apply:apprim})
+	primitives["$bitwise-and"] = wrap(Procedure{name:"$bitwise-and",required:2,apply:apprim})
+	primitives["$bitwise-ior"] = wrap(Procedure{name:"$bitwise-ior",required:2,apply:apprim})
+	primitives["denominator"] = wrap(Procedure{name:"denominator",required:1,apply:apprim})
 	primitives["$cmp"] = wrap(Procedure{name:"$cmp",required:2,apply:apprim})
 	primitives["$-"] = wrap(Procedure{name:"$-",required:2,apply:apprim})
 	primitives["$/"] = wrap(Procedure{name:"$/",required:2,apply:apprim})
@@ -108,6 +118,8 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 		return display(args[0], args[1])
 	case "lookahead-u8":
 		return lookahead_u8(args[0])
+	case "put-bytevector":
+		return put_bytevector(args[0], args[1])
 	case "put-u8":
 		return put_u8(args[0], args[1])
 	case "get-u8":
@@ -118,8 +130,14 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 		return _peek_char(args[0])
 	case "$read-char":
 		return _read_char(args[0])
+	case "close-port":
+		return close_port(args[0])
+	case "close-output-port":
+		return close_output_port(args[0])
 	case "close-input-port":
 		return close_input_port(args[0])
+	case "open-file-output-port":
+		return open_file_output_port(args[0])
 	case "open-input-file":
 		return open_input_file(args[0])
 	case "delete-file":
@@ -136,8 +154,12 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 		return input_port_p(args[0])
 	case "port?":
 		return port_p(args[0])
+	case "string->utf8":
+		return string_to_utf8(args[0])
 	case "u8-list->bytevector":
 		return u8_list_to_bytevector(args[0])
+	case "bytevector-length":
+		return bytevector_length(args[0])
 	case "bytevector?":
 		return bytevector_p(args[0])
 	case "$cell-set!":
@@ -191,6 +213,14 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 		return Make_fixnum(fixnum_max)
 	case "least-fixnum":
 		return Make_fixnum(fixnum_min)
+	case "bitwise-arithmetic-shift-right":
+		return bitwise_arithmetic_shift_right(args[0], args[1])
+	case "$bitwise-and":
+		return bitwise_and(args[0], args[1])
+	case "$bitwise-ior":
+		return bitwise_ior(args[0], args[1])
+	case "denominator":
+		return denominator(args[0])
 	case "$cmp":
 		return number_cmp(args[0], args[1])
 	case "$-":

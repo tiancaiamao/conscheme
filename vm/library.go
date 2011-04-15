@@ -163,11 +163,43 @@ func open_input_file(fn Obj) Obj {
 	return wrap(&InputPort{r: f, is_binary: false})
 }
 
+func open_file_output_port(fn Obj) Obj {
+	// TODO: takes three more arguments
+	if is_immediate(fn) { panic("bad type") }
+	f, e := os.Open(string((*fn).([]int)), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
+	if e != nil { panic(fmt.Sprintf("I/O error: %s", e)) }
+	return wrap(&OutputPort{w: f, is_binary: true})
+}
+
 func close_input_port(port Obj) Obj {
 	if is_immediate(port) { panic("bad type") }
 	v := (*port).(*InputPort)
 	switch f := v.r.(type) {
 	case *os.File: f.Close()
+	}
+	return Void
+}
+
+func close_output_port(port Obj) Obj {
+	if is_immediate(port) { panic("bad type") }
+	v := (*port).(*OutputPort)
+	switch f := v.w.(type) {
+	case *os.File: f.Close()
+	}
+	return Void
+}
+
+func close_port(port Obj) Obj {
+	if is_immediate(port) { panic("bad type") }
+	switch v := (*port).(type) {
+	case *InputPort:
+		switch f := v.r.(type) {
+		case *os.File: f.Close()
+		}
+	case *OutputPort:
+		switch f := v.w.(type) {
+		case *os.File: f.Close()
+		}
 	}
 	return Void
 }
@@ -291,6 +323,26 @@ func put_u8(port,octet Obj) Obj {
 	panic("bad type")
 }
 
+func put_bytevector(port,_bv Obj) Obj {
+	if is_immediate(port) || is_immediate(_bv) { panic("bad type") }
+	bv := (*_bv).([]byte)
+	switch v := (*port).(type) {
+	case *OutputPort:
+		if !v.is_binary { panic("bad port type") }
+		n, err := v.w.Write(bv)
+		// XXX: should loop
+		if n != len(bv) {
+			panic("I/O short write")
+		}
+		if err != nil {
+			panic("I/O write error")
+		}
+
+		return Void
+	}
+	panic("bad type")
+}
+
 func display(x,port Obj) Obj {
 	if is_immediate(port) { panic("bad type") }
 	v := (*port).(*OutputPort)
@@ -317,6 +369,14 @@ func bytevector_p(x Obj) Obj {
 	return False
 }
 
+func bytevector_length(x Obj) Obj {
+	if is_immediate(x) { panic("bad type") }
+	switch v := (*x).(type) {
+	case []byte: return make_number(len(v))
+	}
+	panic("bad type")
+}
+
 func u8_list_to_bytevector(l Obj) Obj {
 	var bv []byte = make([]byte, number_to_int(Length(l)))
 
@@ -331,6 +391,11 @@ func u8_list_to_bytevector(l Obj) Obj {
 	}
 
 	return wrap(bv)
+}
+
+func string_to_utf8(str Obj) Obj {
+	if is_immediate(str) { panic("bad type") }
+	return wrap([]byte(string((*str).([]int))))
 }
 
 // Misc

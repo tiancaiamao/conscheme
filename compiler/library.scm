@@ -88,7 +88,15 @@
 
 (define (+ x y) ($+ x y))
 ;; *
-(define (- x y) ($- x y))
+
+(define (- x . xs)
+  (cond ((null? xs)
+         ($- 0 x))
+        ((null? (cdr xs))
+         ($- x (car xs)))
+        (else
+         (error '- "TODO: handle more arguments"))))
+
 (define (/ x y) ($/ x y))
 
 ;; (define (+ . rest)
@@ -423,6 +431,25 @@
 (define (port-has-port-position? p) #f)
 
 (define (port-has-set-port-position!? p) #f)
+
+(define (call-with-port port proc)
+  (let ((ret (proc port)))
+    (close-port port)
+    ret))
+
+(define (bitwise-ior . xs)
+  (let lp ((ret 0)
+           (xs xs))
+    (if (null? xs)
+        ret
+        (lp ($bitwise-ior ret (car xs)) (cdr xs)))))
+
+(define (bitwise-and . xs)
+  (let lp ((ret -1)
+           (xs xs))
+    (if (null? xs)
+        ret
+        (lp ($bitwise-and ret (car xs)) (cdr xs)))))
 
 ;;; SRFI-1
 

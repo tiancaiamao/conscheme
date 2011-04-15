@@ -171,6 +171,10 @@
 (define-call $/ "number_divide" 2)
 (define-call $- "number_subtract" 2)
 (define-call $cmp "number_cmp" 2)
+(define-call denominator "denominator" 1)
+(define-call $bitwise-ior "bitwise_ior" 2)
+(define-call $bitwise-and "bitwise_and" 2)
+(define-call bitwise-arithmetic-shift-right "bitwise_arithmetic_shift_right" 2)
 
 (define-operation least-fixnum (list "return Make_fixnum(fixnum_min)"))
 (define-primitive (least-fixnum))
@@ -249,7 +253,9 @@
 ;; Bytevectors
 
 (define-call bytevector? "bytevector_p" 1)
+(define-call bytevector-length "bytevector_length" 1)
 (define-call u8-list->bytevector "u8_list_to_bytevector" 1)
+(define-call string->utf8 "string_to_utf8" 1)
 
 ;; I/O
 
@@ -262,7 +268,10 @@
 (define-call file-exists? "file_exists_p" 1)
 (define-call delete-file "delete_file" 1)
 (define-call open-input-file "open_input_file" 1)
+(define-call open-file-output-port "open_file_output_port" 1) ;TODO: three more arguments
 (define-call close-input-port "close_input_port" 1)
+(define-call close-output-port "close_output_port" 1)
+(define-call close-port "close_port" 1)
 
 (define-call $read-char "_read_char" 1)
 (define-call $peek-char "_peek_char" 1)
@@ -270,6 +279,7 @@
 
 (define-call get-u8 "get_u8" 1)
 (define-call put-u8 "put_u8" 2)
+(define-call put-bytevector "put_bytevector" 2)
 (define-call lookahead-u8 "lookahead_u8" 1)
 
 (define-call $display "display" 2)

@@ -124,6 +124,29 @@ func integer_p(x Obj) Obj {
 	return False
 }
 
+func denominator(num Obj) Obj {
+	if (uintptr(unsafe.Pointer(num)) & fixnum_mask) == fixnum_tag {
+		return Make_fixnum(1)
+	}
+
+	if (uintptr(unsafe.Pointer(num)) & heap_mask) != heap_tag {
+		panic("bad type")
+	}
+
+	switch n := (*num).(type) {
+	case *big.Int:
+		return Make_fixnum(1)
+	case *big.Rat:
+		return wrap(n.Denom())
+	case float64:
+		panic("TODO: denominator for float64")
+	case complex128:
+		panic("undefined")
+	}
+	panic("bad type")
+}
+
+
 // func number_equal(x,y Obj) Obj {
 // 	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
 // 	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
@@ -337,6 +360,94 @@ func number_cmp(x,y Obj) Obj {
 		}
 	case complex128:
 		panic("comparison on complex numbers is undefined")
+	}
+	panic("bad type")
+}
+
+func bitwise_ior(x,y Obj) Obj {
+	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
+	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	if xfx && yfx {
+		i1 := uintptr(unsafe.Pointer(x))
+		i2 := uintptr(unsafe.Pointer(y))
+		return Obj(unsafe.Pointer(uintptr(i1 | i2)))
+	}
+
+	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
+		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
+		panic("bad type")
+	}
+
+	if xfx { return bitwise_ior(y,x) }
+
+	switch vx := (*x).(type) {
+	case *big.Int:
+		var z *big.Int = big.NewInt(0)
+		if yfx {
+			vy := big.NewInt(int64(fixnum_to_int(y)))
+			return wrap(z.Or(vx,vy))
+		}
+		switch vy := (*y).(type) {
+		case *big.Int:
+			return wrap(z.Or(vx,vy))
+		default:
+			panic("bad type")
+		}
+	}
+	panic("bad type")
+}
+
+func bitwise_and(x,y Obj) Obj {
+	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
+	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	if xfx && yfx {
+		i1 := uintptr(unsafe.Pointer(x))
+		i2 := uintptr(unsafe.Pointer(y))
+		return Obj(unsafe.Pointer(uintptr(i1 & i2)))
+	}
+
+	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
+		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
+		panic("bad type")
+	}
+
+	if xfx { return bitwise_and(y,x) }
+
+	switch vx := (*x).(type) {
+	case *big.Int:
+		var z *big.Int = big.NewInt(0)
+		if yfx {
+			vy := big.NewInt(int64(fixnum_to_int(y)))
+			return wrap(z.And(vx,vy))
+		}
+		switch vy := (*y).(type) {
+		case *big.Int:
+			return wrap(z.And(vx,vy))
+		default:
+			panic("bad type")
+		}
+	}
+	panic("bad type")
+}
+
+func bitwise_arithmetic_shift_right(x,y Obj) Obj {
+	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
+	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	if !yfx { panic("bad shift amount") }
+	// TODO: check the amount. shouldn't be negative, and perhaps
+	// '>>' does a modulo on the amount.
+	amount := uint(uintptr(unsafe.Pointer(y)) >> fixnum_shift)
+	if xfx {
+		i1 := uintptr(unsafe.Pointer(x)) >> fixnum_shift
+		return Obj(unsafe.Pointer(uintptr(((i1 >> amount) << fixnum_shift) | fixnum_tag)))
+	} else if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
+		panic("bad type")
+	}
+
+	switch vx := (*x).(type) {
+	case *big.Int:
+		var z *big.Int = big.NewInt(0)
+		return wrap(z.Rsh(vx, amount))
 	}
 	panic("bad type")
 }
