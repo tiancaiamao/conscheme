@@ -426,6 +426,31 @@
 
 ;;; SRFI-1
 
+(define (make-list len . rest)
+  (let ((fill (cond ((null? rest) #f)
+                    ((null? (cdr rest)) (car rest))
+                    (else
+                     (error 'make-list "Too many arguments" len rest)))))
+    (let lp ((len len) (ret '()))
+      (if (<= len 0)
+          ret
+          (lp (- len 1)
+              (cons fill ret))))))
+
+;; This should probably be implemented as a primitive if it's important.
+(define (cons* x . xs)
+  (if (null? xs)
+      x
+      (if (null? (cdr xs))
+          (cons x (car xs))
+          (let ((ret (cons x xs)))
+            (let lp ((xs ret))
+              (cond ((null? (cddr xs))
+                     (set-cdr! xs (cadr xs))
+                     ret)
+                    (else
+                     (lp (cdr xs)))))))))
+
 (define map-in-order map)
 
 (define (delete-duplicates list . rest)
