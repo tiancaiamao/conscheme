@@ -173,6 +173,12 @@
           (else
            (list 'if (car arms) (lp (cdr arms)) #f)))))
 
+(define-macro (unless test . body)
+  (list 'cond (cons (list 'not test) body)))
+
+(define-macro (when test . body)
+  (list 'cond (cons test body)))
+
 ;; TODO: do
 ;; TODO: quasiquote
 

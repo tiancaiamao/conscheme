@@ -130,9 +130,11 @@
              ;; (newline)
              ;; (write (compile-expression datum))
              ;; (newline)
-             (write (eval datum (interaction-environment)))
-             (newline)
-             (loop (+ i 1)))))))
+             (let ((result (eval datum (interaction-environment))))
+               (unless (eq? result (unspecified))
+                 (write result)
+                 (newline))
+               (loop (+ i 1))))))))
 
 (define (thread-test)
   (let ((t ($make-thread
