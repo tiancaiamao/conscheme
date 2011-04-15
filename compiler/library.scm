@@ -450,6 +450,18 @@
                            (cdr list))
                      (cons (car list) ret))))))))
 
+(define (append-map f l . ls)
+  (if (null? ls)
+      (let lp ((l l) (ls '()))
+        (if (null? l)
+            (reverse ls)
+            (lp (cdr l) (append (reverse (f (car l))) ls))))
+      (let lp ((acc '()) (l l) (ls ls))
+        (if (null? l)
+            (reverse acc)
+            (lp (append (reverse (apply f (car l) (map car ls))) acc)
+                (cdr l) (map cdr ls))))))
+
 ;;; Misc
 
 (define (error who why . irritants)
