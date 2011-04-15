@@ -35,6 +35,11 @@
 ;; we'd be forced to implement them, which I'm not sure we will have
 ;; time to do.
 
+(cond-expand
+ (guile
+  (use-modules (rnrs lists)))           ;for-all
+ (else #f))
+
 ;;;
 (define (lambda-formals x) (cadr x))
 
@@ -127,16 +132,28 @@
               (lp (cons datum datums))))))))
 
 (define-macro (case value . cases)
-  (let ((tmp (gensym)))
-    (list 'let (list (list tmp value))
-          (cons 'cond
-                (map (lambda (c)
-                       (cond ((eq? (car c) 'else)
-                              c)
-                             (else
-                              (list (list 'memv tmp (list 'quote (car c)))
-                                    (cons 'begin (cdr c))))))
-                     cases)))))
+  (letrec ((eq-works?
+            (lambda (x)
+              ;; True if x is of a type that eqv? does not compare more
+              ;; discriminately than eq?.
+              (or (symbol? x) (char? x) (boolean? x)))))
+    (let ((tmp (gensym)))
+      (list 'let (list (list tmp value))
+            (cons 'cond
+                  (map (lambda (c)
+                         (cond ((eq? (car c) 'else)
+                                c)
+                               ((for-all eq-works? (car c))
+                                ;; Silly optimization
+                                (if (= (length (car c)) 1)
+                                    (list (list 'eq? tmp (list 'quote (caar c)))
+                                          (cons 'begin (cdr c)))
+                                    (list (list 'memq tmp (list 'quote (car c)))
+                                          (cons 'begin (cdr c)))))
+                               (else
+                                (list (list 'memv tmp (list 'quote (car c)))
+                                      (cons 'begin (cdr c))))))
+                       cases))))))
 
 (define-macro (cond . tests)
   ;; TODO: does not support =>

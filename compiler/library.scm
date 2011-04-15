@@ -448,6 +448,21 @@
         ret
         (lp ($bitwise-and ret (car xs)) (cdr xs)))))
 
+(define (for-all f l . ls)
+  (if (null? ls)
+      (let lp ((l l))
+        (or (null? l)
+            (if (null? (cdr l))
+                (f (car l))
+                (and (f (car l))
+                     (lp (cdr l))))))
+      (let lp ((l l) (ls ls))
+        (or (and (null? l) (for-all null? ls))
+            (if (and (null? (cdr l)) (for-all null? (map cdr ls)))
+                (apply f (car l) (map car ls))
+                (and (apply f (car l) (map car ls))
+                     (lp (cdr l) (map cdr ls))))))))
+
 ;;; SRFI-1
 
 (define (make-list len . rest)
