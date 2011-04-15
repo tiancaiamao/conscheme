@@ -134,6 +134,14 @@
              (newline)
              (loop (+ i 1)))))))
 
+(define (thread-test)
+  (let ((t ($make-thread
+            (lambda ()
+              (print "THREAD 2"))
+            "thread")))
+    (print "THREAD 1")
+    (thread-start! t)))
+
 (cond ((member "compile" (command-line))
        (compile))
       ((member "genprim" (command-line))

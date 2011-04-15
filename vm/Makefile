@@ -5,6 +5,7 @@ GOFILES=arithmetic.go\
 	eval.go\
 	deserializer.go\
 	library.go\
+	thread.go\
 	types.go\
 	primitives.go\
 

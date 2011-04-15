@@ -266,6 +266,15 @@
 (define-call $display "display" 2)
 (define-call $write "write" 2)
 
+;; Threading
+
+(define-call $make-thread "_make_thread" 2)
+(define-call thread-name "thread_name" 1)
+(define-call thread-specific "thread_specific" 1)
+(define-call thread-specific-set! "thread_specific_set_ex" 2)
+(define-call thread-yield! "thread_yield_ex" 0)
+(define-call thread-start! "thread_start_ex" 1)
+
 ;;; A compiler pass
 
 (define (lookup-primop x)

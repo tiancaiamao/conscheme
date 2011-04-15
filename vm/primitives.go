@@ -5,6 +5,12 @@ import "fmt"
 import "os"
 var primitives map[string]Obj = make(map[string]Obj)
 func init() {
+	primitives["thread-start!"] = wrap(Procedure{name:"thread-start!",required:1,apply:apprim})
+	primitives["thread-yield!"] = wrap(Procedure{name:"thread-yield!",required:0,apply:apprim})
+	primitives["thread-specific-set!"] = wrap(Procedure{name:"thread-specific-set!",required:2,apply:apprim})
+	primitives["thread-specific"] = wrap(Procedure{name:"thread-specific",required:1,apply:apprim})
+	primitives["thread-name"] = wrap(Procedure{name:"thread-name",required:1,apply:apprim})
+	primitives["$make-thread"] = wrap(Procedure{name:"$make-thread",required:2,apply:apprim})
 	primitives["$write"] = wrap(Procedure{name:"$write",required:2,apply:apprim})
 	primitives["$display"] = wrap(Procedure{name:"$display",required:2,apply:apprim})
 	primitives["lookahead-u8"] = wrap(Procedure{name:"lookahead-u8",required:1,apply:apprim})
@@ -73,6 +79,18 @@ func init() {
 
 func evprim(primop string, args []Obj) Obj {
 	switch primop {
+	case "thread-start!":
+		return thread_start_ex(args[0])
+	case "thread-yield!":
+		return thread_yield_ex()
+	case "thread-specific-set!":
+		return thread_specific_set_ex(args[0], args[1])
+	case "thread-specific":
+		return thread_specific(args[0])
+	case "thread-name":
+		return thread_name(args[0])
+	case "$make-thread":
+		return _make_thread(args[0], args[1])
 	case "$write":
 		return write(args[0], args[1])
 	case "$display":
