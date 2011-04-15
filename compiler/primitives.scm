@@ -259,6 +259,7 @@
 (define-call current-input-port "current_input_port" 0)
 (define-call current-output-port "current_output_port" 0)
 
+(define-call file-exists? "file_exists_p" 1)
 (define-call open-input-file "open_input_file" 1)
 (define-call close-input-port "close_input_port" 1)
 

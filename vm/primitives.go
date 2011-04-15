@@ -23,6 +23,7 @@ func init() {
 	primitives["$read-char"] = wrap(Procedure{name:"$read-char",required:1,apply:apprim})
 	primitives["close-input-port"] = wrap(Procedure{name:"close-input-port",required:1,apply:apprim})
 	primitives["open-input-file"] = wrap(Procedure{name:"open-input-file",required:1,apply:apprim})
+	primitives["file-exists?"] = wrap(Procedure{name:"file-exists?",required:1,apply:apprim})
 	primitives["current-output-port"] = wrap(Procedure{name:"current-output-port",required:0,apply:apprim})
 	primitives["current-input-port"] = wrap(Procedure{name:"current-input-port",required:0,apply:apprim})
 	primitives["output-port?"] = wrap(Procedure{name:"output-port?",required:1,apply:apprim})
@@ -120,6 +121,8 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 		return close_input_port(args[0])
 	case "open-input-file":
 		return open_input_file(args[0])
+	case "file-exists?":
+		return file_exists_p(args[0])
 	case "current-output-port":
 		return current_output_port()
 	case "current-input-port":

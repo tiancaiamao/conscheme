@@ -142,6 +142,12 @@ func current_output_port() Obj {
 	return curout
 }
 
+func file_exists_p(fn Obj) Obj {
+	if is_immediate(fn) { panic("bad type") }
+	_,err := os.Stat(string((*fn).([]int)))
+	return Make_boolean(err == nil)
+}
+
 func open_input_file(fn Obj) Obj {
 	if is_immediate(fn) { panic("bad type") }
 	f, e := os.Open(string((*fn).([]int)), os.O_RDONLY, 0666)
