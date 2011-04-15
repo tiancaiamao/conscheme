@@ -164,6 +164,7 @@
 ;; Numbers
 
 (define-call number? "number_p" 1)
+(define-call integer? "integer_p" 1)
 (define-call $number->string "_number_to_string" 2)
 (define-call $string->number "_string_to_number" 2)
 (define-call $+ "number_add" 2)

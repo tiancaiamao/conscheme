@@ -29,6 +29,7 @@ package conscheme
 import (
 	"big"
 	"fmt"
+	"math"
 	"unsafe"
 )
 
@@ -103,6 +104,23 @@ func number_p(x Obj) Obj {
 	// case *Compnum:
 	}
 	return True
+}
+
+func integer_p(x Obj) Obj {
+	if (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag {
+		return True
+	}
+	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
+		return False
+	}
+	switch v := (*x).(type) {
+	default: return False
+	case *big.Int:
+		return True
+	case float64:
+		return Make_boolean(v == math.Floor(v))
+	}
+	return False
 }
 
 // func number_equal(x,y Obj) Obj {
