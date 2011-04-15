@@ -82,6 +82,7 @@ func init() {
 	primitives["string->symbol"] = wrap(Procedure{name:"string->symbol",required:1,apply:apprim})
 	primitives["symbol->string"] = wrap(Procedure{name:"symbol->string",required:1,apply:apprim})
 	primitives["symbol?"] = wrap(Procedure{name:"symbol?",required:1,apply:apprim})
+	primitives["null?"] = wrap(Procedure{name:"null?",required:1,apply:apprim})
 	primitives["set-cdr!"] = wrap(Procedure{name:"set-cdr!",required:2,apply:apprim})
 	primitives["set-car!"] = wrap(Procedure{name:"set-car!",required:2,apply:apprim})
 	primitives["length"] = wrap(Procedure{name:"length",required:1,apply:apprim})
@@ -265,6 +266,12 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 		return Symbol_to_string(args[0])
 	case "symbol?":
 		return symbol_p(args[0])
+	case "null?":
+		if args[0] ==  Eol {
+			return True
+		} else {
+			return False
+		}
 	case "set-cdr!":
 		return set_cdr_ex(args[0], args[1])
 	case "set-car!":

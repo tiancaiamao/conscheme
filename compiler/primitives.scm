@@ -138,6 +138,14 @@
 (define-call set-car! "set_car_ex" 2)
 (define-call set-cdr! "set_cdr_ex" 2)
 
+(define-operation null?
+   (list (string-append "if " (argn 0) " ==  Eol {")
+         "\treturn True"
+         "} else {"
+         "\treturn False"
+         "}"))
+(define-primitive (null? x))
+
 ;; Symbols
 
 (define-call symbol? "symbol_p" 1)

@@ -175,8 +175,6 @@
 (define (cdddar x) (cdddr (car x)))
 (define (cddddr x) (cdddr (cdr x)))
 
-(define (null? x) (eq? x '()))
-
 (define (list? x) (and (floyd x) #t))
 
 (define (list . x) x)
@@ -372,7 +370,6 @@
 ;; with-input-from-file with-output-to-file
 ;; open-output-file
 ;; close-input-port close-output-port
-;; read
 
 (define (read-char . rest)
   (if (null? rest)
