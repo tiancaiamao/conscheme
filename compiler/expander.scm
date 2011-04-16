@@ -113,7 +113,7 @@
 
 (define-macro (letrec bindings . body)
   (let ((temps (map (lambda (_) (gensym)) bindings)))
-    (list 'let (map (lambda (binding) (list (car binding) '(if #f #f)))
+    (list 'let (map (lambda (binding) (list (car binding) '(unspecified)))
                     bindings)
           (append (list 'let (map (lambda (temp binding) (list temp (cadr binding)))
                                   temps bindings))
@@ -216,11 +216,48 @@
 (define (exp-extend-env formals env)
   (append (formals-to-list formals) env))
 
+(define (begin-splice exprs)
+  (append-map (lambda (expr)
+                (if (and (pair? expr)
+                         (eq? (car expr) 'begin))
+                    (begin-splice (cdr expr))
+                    (list expr)))
+              exprs))
+
 (define (begin-wrap body)
-  ;; For wrapping a body in begin, unless it was already wrapped in begin
-  (if (eq? (car body) 'begin)
-      body
+  (if (and (pair? body) (null? (cdr body)))
+      (car body)
       (cons 'begin body)))
+
+(define (fixup-body body)
+  ;; `body' is a list of expressions from a lambda body. First all
+  ;; begins are spliced into the spine of the sequence. Then internal
+  ;; defines, if any, are transformed into a letrec. If necessary,
+  ;; everything is wrapped in a begin.
+  (define (collect exprs)
+    (define (fixup-lambda def)
+      (if (symbol? (car def))
+          def
+          (list (caar def)
+                (cons* 'lambda (cdar def) (cdr def)))))
+    (let lp ((exprs exprs)
+             (defs '()))
+      (cond ((null? exprs)
+             (error 'expand "Empty lambda body"))
+            ((and (pair? exprs)
+                  (pair? (car exprs))
+                  (eq? (caar exprs) 'define))
+             (lp (cdr exprs)
+                 (cons (fixup-lambda (cdar exprs)) defs)))
+            (else
+             (cons (reverse defs) exprs)))))
+  (let ((body+defs (collect (begin-splice body))))
+    (let ((defs (car body+defs))
+          (body (cdr body+defs)))
+      (let ((body (begin-wrap body)))
+        (if (null? defs)
+            body
+            (list 'letrec defs body))))))
 
 (define (expand* x env)
   (define (expand** x env)
@@ -229,12 +266,11 @@
           (expand* (apply (cdr expander) (cdr x)) env)
           (case (car x)
             ((lambda)
-             ;; TODO: transform define into letrec
              (if (null? (lambda-body* x))
                  (error 'expand "Missing lambda body" x))
              (list 'lambda (lambda-formals x)
                    (let ((newenv (exp-extend-env (lambda-formals x) env)))
-                     (expand* (begin-wrap (lambda-body* x)) newenv))))
+                     (expand* (fixup-body (lambda-body* x)) newenv))))
             ((if)
              (list 'if
                    (expand* (if-test x) env)
@@ -245,6 +281,8 @@
                             env)))
             ((quote) x)
             ((define)
+             (if (not (null? env))
+                 (error 'expand "Define is not allowed here" x))
              (cond ((pair? (cadr x))
                     ;; (define (name . formals) body)
                     (expand* (list 'define (caadr x)
@@ -256,7 +294,7 @@
                         (error 'expand "Syntax error" x))
                     (list 'define (cadr x) (expand* (caddr x) env)))))
             ((begin)
-             (cons 'begin (map-in-order (lambda (x) (expand* x env)) (cdr x))))
+             (begin-wrap (begin-splice (map-in-order (lambda (x) (expand* x env)) (cdr x)))))
             ((set!)
              (list 'set! (set!-name x) (expand* (set!-expression x) env)))
             ((define-macro)
