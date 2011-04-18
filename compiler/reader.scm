@@ -137,7 +137,7 @@
                              ((space) #\space)
                              ((delete) #\delete)
                              (else
-                              (read-error p "Unknown character name" char)))))))
+                              (read-error p "Unknown character name" chars)))))))
                  (else
                   (lp (cons (read-char p) chars)))))))
       (else
