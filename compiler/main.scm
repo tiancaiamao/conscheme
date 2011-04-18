@@ -28,6 +28,7 @@
 (include "primitives.scm")
 (include "aconv.scm")
 (include "mutation.scm")
+(include "freevar.scm")
 (include "serialize.scm")
 (include "expander.scm")
 ;; (include "codegen.scm")
@@ -40,7 +41,7 @@
          (newline))))
 
 (define (compile-expression expr)
-  (primops (mutation (aconv (expand expr)))))
+  (freevar (primops (mutation (aconv (expand expr))))))
 
 (define (compile)
   (let ((output-file "main.cso")

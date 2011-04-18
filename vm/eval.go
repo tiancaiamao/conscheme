@@ -33,9 +33,10 @@ import (
 var Begin Obj
 var Define Obj
 var If Obj
-var Lambda Obj
+var Let Obj
 var Quote Obj
 var Set_ex Obj
+var _Ann_Lambda Obj
 var _Funcall Obj
 var _Primcall Obj
 var _Primitive Obj
@@ -44,9 +45,10 @@ func init() {
 	Begin = intern("begin")
 	Define = intern("define")
 	If = intern("if")
-	Lambda = intern("lambda")
+	Let = intern("let")
 	Quote = intern("quote")
 	Set_ex = intern("set!")
+	_Ann_Lambda = intern("$ann-lambda")
 	_Funcall = intern("$funcall")
 	_Primcall = intern("$primcall")
 	_Primitive = intern("$primitive")
@@ -185,24 +187,21 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 		} else {
 			return ev(consequent, tailpos, lexenv, ct)
 		}
-	case Lambda:
-		var closure Procedure
-		code = cdr(code); closure.formals = car(code)
-		code = cdr(code); closure.body = car(code)
-		closure.lexenv = lexenv
-		closure.name = "closure"
-		closure.apply = lambda_apply
-		closure.required = 0
-		for formals := closure.formals; formals != Eol; {
-			switch f := (*formals).(type) {
-			case string:
-				formals = Eol
-			case *[2]Obj:
-				closure.required++
-				formals = f[1] // cdr
-			}
+	case Let:
+		code = cdr(code); bindings := car(code)
+		code = cdr(code); body := car(code)
+
+		if lexenv == nil {
+			lexenv = make(map[string]Obj)
 		}
-		return wrap(closure)
+		for b := bindings; b != Eol; b = cdr(b) {
+			bind := car(b)
+			name := car(bind)
+			expr := car(cdr(bind))
+			value := ev(expr, false, lexenv, ct)
+			lexenv[(*name).(string)] = value
+		}
+		return ev(body, tailpos, lexenv, ct)
 	case Set_ex:
 		code = cdr(code); name := car(code)
 		code = cdr(code)
@@ -210,9 +209,9 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 		value := ev(car(code), true, lexenv, ct)
 		if lexenv != nil {
 			// fmt.Printf("set! looking up %s in %v\n", sname,lexenv)
-			if binding, is_bound := lexenv[sname]; is_bound {
+			if _, is_bound := lexenv[sname]; is_bound {
 				// fmt.Printf("set! did find %s: ",sname)
-				Write(binding); fmt.Printf("\n")
+				// Write(binding); fmt.Printf("\n")
 				lexenv[sname] = value
 				return Void
 			}
@@ -226,6 +225,26 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 	case Quote:
 		return car(cdr(code))
 
+	case _Ann_Lambda:
+		var closure Procedure
+		code = cdr(code); closure.formals = car(code)
+		code = cdr(code); name := car(code)
+		code = cdr(code); // freevars = car(code)
+		code = cdr(code); closure.body = car(code)
+		closure.lexenv = lexenv
+		closure.name = (*name).(string)
+		closure.apply = lambda_apply
+		closure.required = 0
+		for formals := closure.formals; formals != Eol; {
+			switch f := (*formals).(type) {
+			case string:
+				formals = Eol
+			case *[2]Obj:
+				closure.required++
+				formals = f[1] // cdr
+			}
+		}
+		return wrap(closure)
 	case _Funcall:
 		// Procedure call
 		code := cdr(code)
@@ -287,6 +306,6 @@ func apply(args []Obj, ct Obj) Obj {
 
 // Runs the simple language emitted by the "compiler"
 func Eval(code Obj) Obj {
-	return ev(code, true, nil, 
+	return ev(code, true, nil,
 		wrap(Thread{name:String_string("primordial"), specific: False}))
 }
