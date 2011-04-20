@@ -225,9 +225,12 @@
               exprs))
 
 (define (begin-wrap body)
-  (if (and (pair? body) (null? (cdr body)))
-      (car body)
-      (cons 'begin body)))
+  (cond ((null? body)
+         '(unspecified))
+        ((and (pair? body) (null? (cdr body)))
+         (car body))
+        (else
+         (cons 'begin body))))
 
 (define (fixup-body body)
   ;; `body' is a list of expressions from a lambda body. First all
