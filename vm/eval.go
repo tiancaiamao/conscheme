@@ -29,31 +29,6 @@ import (
 	"fmt"
 )
 
-// Symbol constants used by eval
-var Begin Obj
-var Define Obj
-var If Obj
-var Let Obj
-var Quote Obj
-var Set_ex Obj
-var _Ann_Lambda Obj
-var _Funcall Obj
-var _Primcall Obj
-var _Primitive Obj
-
-func init() {
-	Begin = intern("begin")
-	Define = intern("define")
-	If = intern("if")
-	Let = intern("let")
-	Quote = intern("quote")
-	Set_ex = intern("set!")
-	_Ann_Lambda = intern("$ann-lambda")
-	_Funcall = intern("$funcall")
-	_Primcall = intern("$primcall")
-	_Primitive = intern("$primitive")
-}
-
 type Procedure struct {
 	name string
 	required int
@@ -162,8 +137,8 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 		return lookup(code, lexenv)
 	}
 
-	switch cmd := car(code); cmd {
-	case Begin:
+	switch cmd := car(code); (*cmd).(string) {
+	case "begin":
 		var ret Obj
 		for code = cdr(code); code != Eol; code = cdr(code) {
 			// fmt.Printf("begin: ")
@@ -172,13 +147,13 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 			ret = ev(car(code), tailpos && cdr(code) == Eol, lexenv, ct)
 		}
 		return ret
-	case Define:
+	case "define":
 		code = cdr(code); name := car(code)
 		code = cdr(code)
 		sname := (*name).(string)
 		env[sname] = ev(car(code), true, lexenv, ct)
 		return Void
-	case If:
+	case "if":
 		code = cdr(code); test := car(code)
 		code = cdr(code); consequent := car(code)
 		code = cdr(code); alternative := car(code)
@@ -187,7 +162,7 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 		} else {
 			return ev(consequent, tailpos, lexenv, ct)
 		}
-	case Let:
+	case "let":
 		code = cdr(code); bindings := car(code)
 		code = cdr(code); body := car(code)
 
@@ -202,7 +177,7 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 			lexenv[(*name).(string)] = value
 		}
 		return ev(body, tailpos, lexenv, ct)
-	case Set_ex:
+	case "set!":
 		code = cdr(code); name := car(code)
 		code = cdr(code)
 		sname := (*name).(string)
@@ -222,10 +197,10 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 			return Void
 		}
 		panic(fmt.Sprintf("attempt to mutate undefined variable: %s", sname))
-	case Quote:
+	case "quote":
 		return car(cdr(code))
 
-	case _Ann_Lambda:
+	case "$ann-lambda":
 		var closure Procedure
 		code = cdr(code); closure.formals = car(code)
 		code = cdr(code); name := car(code)
@@ -245,7 +220,7 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 			}
 		}
 		return wrap(closure)
-	case _Funcall:
+	case "$funcall":
 		// Procedure call
 		code := cdr(code)
 		fun := ev(car(code), false, lexenv, ct)
@@ -255,7 +230,7 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 			args[i] = ev(car(code), false, lexenv, ct)
 		}
 		return ap(fun, args, ct)
-	case _Primcall:
+	case "$primcall":
 		code = cdr(code)
 		primop := (*car(code)).(string)
 		code = cdr(code)
@@ -264,7 +239,7 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 			args[i] = ev(car(code), false, lexenv, ct)
 		}
 		return evprim(primop, args, ct)
-	case _Primitive:
+	case "$primitive":
 		name := car(cdr(code))
 		sname := (*name).(string)
 		primitive, is_bound := primitives[sname]
