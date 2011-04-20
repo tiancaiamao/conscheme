@@ -139,11 +139,11 @@
 (define-call set-cdr! "set_cdr_ex" 2)
 
 (define-operation null?
-   (list (string-append "if " (argn 0) " ==  Eol {")
-         "\treturn True"
-         "} else {"
-         "\treturn False"
-         "}"))
+  (list (string-append "if " (argn 0) " ==  Eol {")
+        "\treturn True"
+        "} else {"
+        "\treturn False"
+        "}"))
 (define-primitive (null? x))
 
 ;; Symbols
@@ -198,12 +198,12 @@
 (define-call string-set! "String_set_ex" 3)
 
 (define-operation make-string
-   (list
-    (string-append "switch " (arglen) " {")
-    (string-append "default: return Make_string(" (argn 0) "," (argn 1) ")")
-    (string-append "case 1: return Make_string(" (argn 0)
-                   ",Make_char(" (number->string (char->integer #\space)) "))")
-    "}"))
+  (list
+   (string-append "switch " (arglen) " {")
+   (string-append "default: return Make_string(" (argn 0) "," (argn 1) ")")
+   (string-append "case 1: return Make_string(" (argn 0)
+                  ",Make_char(" (number->string (char->integer #\space)) "))")
+   "}"))
 (define-primitive (make-string len . opt)) ;TODO: 1 optional argument
 
 ;; Misc
@@ -221,11 +221,11 @@
 (define-primitive (eof-object))
 
 (define-operation eq?
-   (list (string-append "if " (argn 0) " == " (argn 1) " {")
-         "\treturn True"
-         "} else {"
-         "\treturn False"
-         "}"))
+  (list (string-append "if " (argn 0) " == " (argn 1) " {")
+        "\treturn True"
+        "} else {"
+        "\treturn False"
+        "}"))
 (define-primitive (eq? x y))
 
 (define-operation exit
@@ -236,26 +236,27 @@
 
 (define-call $eval "Eval" 1)
 
-;; Cells, internal to the compiler, used for mutation
+;; Cells, internal to the compiler, used for mutation. TODO: should
+;; not be callable by the user.
 
 (define-operation $make-cell
-   (list "var v [1]Obj"
-         (string-append "v[0] = " (argn 0))
-         "var vv interface{} = &v"
-         "return Obj(&vv)"))
+  (list "var v [1]Obj"
+        (string-append "v[0] = " (argn 0))
+        "var vv interface{} = &v"
+        "return Obj(&vv)"))
 (define-primitive ($make-cell init))
 
 (define-operation $cell-ref
-   (list (string-append "v := " (argn 0))
-         "vv := (*v).(*[1]Obj)"
-         "return vv[0]"))
+  (list (string-append "v := " (argn 0))
+        "vv := (*v).(*[1]Obj)"
+        "return vv[0]"))
 (define-primitive ($cell-ref cell))
 
 (define-operation $cell-set!
-   (list (string-append "v := " (argn 0))
-         "vv := (*v).(*[1]Obj)"
-         (string-append "vv[0] = " (argn 1))
-         "return Void"))
+  (list (string-append "v := " (argn 0))
+        "vv := (*v).(*[1]Obj)"
+        (string-append "vv[0] = " (argn 1))
+        "return Void"))
 (define-primitive ($cell-set! cell value))
 
 ;; Bytevectors
@@ -304,7 +305,7 @@
 (define-call thread-start! "thread_start_ex" 1)
 
 (define-operation current-thread
-   (list (string-append "return " (ct))))
+  (list (string-append "return " (ct))))
 (define-primitive (current-thread))
 
 ;;; A compiler pass
