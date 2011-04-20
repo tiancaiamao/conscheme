@@ -385,20 +385,47 @@
 
 ;; char-ready?
 
-;; TODO: write these in scheme
+(define (obj-writer obj port write?)
+  (cond ((char? obj)
+         (if (not write?)
+             (write-char obj port)
+             (let ((name (assq obj '((#\nul . nul)
+                                     (#\alarm . alarm)
+                                     (#\backspace . backspace)
+                                     (#\tab . tab)
+                                     (#\linefeed . linefeed)
+                                     (#\newline . newline)
+                                     (#\vtab . vtab)
+                                     (#\page . page)
+                                     (#\return . return)
+                                     (#\esc . esc)
+                                     (#\space . space)
+                                     (#\delete . delete)))))
+               ($display "#\\" port)
+               (cond (name
+                      ($display (cdr name) port))
+                     ;; TODO: non-printable characters
+                     (else
+                      ($display obj port))))))
+        ;; TODO: strings, symbols, vectors, pairs, etc
+        (write?
+         ($write obj port))
+        (else
+         ($display obj port))))
+
 (define (write obj . x)
   (if (null? x)
-      ($write obj (current-output-port))
-      ($write obj (car x))))
+      (obj-writer obj (current-output-port) #t)
+      (obj-writer obj (car x) #t)))
 
 (define (display obj . x)
   (if (null? x)
-      ($display obj (current-output-port))
-      ($display obj (car x))))
+      (obj-writer obj (current-output-port) #f)
+      (obj-writer obj (car x) #f)))
 
 (define (newline . x)
   (if (null? x)
-      (write-char #\newline)
+      (write-char #\newline (current-output-port))
       (write-char #\newline (car x))))
 
 (define (write-char c . rest)
@@ -406,8 +433,15 @@
       ($write-char c (current-output-port))
       ($write-char c (car rest))))
 
-;; load
-;; transcript-on transcript-off
+(define (load filename)
+  (call-with-input-file filename
+    (lambda (p)
+      (let lp ((datums '()))
+        (let ((datum (read p)))
+          (if (eof-object? datum)
+              (eval (cons 'begin (reverse datums))
+                    (interaction-environment))
+              (lp (cons datum datums))))))))
 
 ;;; R6RS
 
