@@ -122,6 +122,14 @@
                                temps bindings)
                           body)))))
 
+(define-macro (letrec* bindings . body)
+  (append (list 'let (map (lambda (binding) (list (car binding) '(unspecified)))
+                          bindings))
+          (map (lambda (binding)
+                 (cons 'set! binding))
+               bindings)
+          body))
+
 (define-macro (include filename)
   (call-with-input-file filename
     (lambda (p)
@@ -132,11 +140,11 @@
               (lp (cons datum datums))))))))
 
 (define-macro (case value . cases)
-  (letrec ((eq-works?
-            (lambda (x)
-              ;; True if x is of a type that eqv? does not compare more
-              ;; discriminately than eq?.
-              (or (symbol? x) (char? x) (boolean? x)))))
+  (let ((eq-works?
+         (lambda (x)
+           ;; True if x is of a type that eqv? does not compare more
+           ;; discriminately than eq?.
+           (or (symbol? x) (char? x) (boolean? x)))))
     (let ((tmp (gensym)))
       (list 'let (list (list tmp value))
             (cons 'cond
@@ -260,7 +268,7 @@
       (let ((body (begin-wrap body)))
         (if (null? defs)
             body
-            (list 'letrec defs body))))))
+            (list 'letrec* defs body))))))
 
 (define (expand* x env)
   (define (expand** x env)
