@@ -85,14 +85,10 @@
              (emit (list 'closure-ref reg (cddr v)))
              reg))
           ((local)
-           ;; (print "#;local" v)
            (cddr v))
           (else
-           (error 'cg-lookup "Unknown variable" v)))
-        (let ()
-          ;; XXX: convert to primitive before this pass
-          (emit (list 'globalref 'fixme name))
-          'ERROR))))
+           (error 'cg-lookup "Unknown variable type" v)))
+        (error 'cg-lookup "Unknown variable" name))))
 
 (define (cg-mutate name reg emit s)
   ;; (print "#;cg-mutate " name " in " (cg-env s))
@@ -105,10 +101,8 @@
             ((local)
              (emit (list 'move (cddr v) reg)))
             (else
-             (error 'cg-mutate "Unknown variable" v)))
-          (let ()
-            ;; XXX: convert to primitive before this pass
-            (emit (list 'globalset 'fixme name)))))
+             (error 'cg-mutate "Unknown variable type" v)))
+          (error 'cg-mutate "Unknown variable" name)))
     (emit (list 'make-void r))
     r))
 
@@ -123,26 +117,15 @@
   (reverse ((vector-ref s 3))))
 
 (define (cg-primcall name ai emit s)
-  ;; TODO: include primitives as instructions. they can be
-  ;; included in the bytecode vm main loop.
-  ;; TODO: assign numbers to all primitives
-  (let ((idx (case name
-               ((cons) 0)
-               (else -1)
-               #;(else (error 'cg-primitive "Unknown primitive" name)))))
-    (let ((r (cg-reg s)))
-      (emit (list 'primcall r idx ai))
-      r)))
+  (let ((r (cg-reg s)))
+    (emit (list 'primcall r name ai))
+    r))
 
 (define (cg-primitive name emit s)
   ;; TODO: does not work.
-  (let ((idx (case name
-               ((cons) 0)
-               (else -1)
-               #;(else (error 'cg-primitive "Unknown primitive" name)))))
-    (let ((r (cg-reg s)))
-      (emit (list 'primref r idx))
-      r)))
+  (let ((r (cg-reg s)))
+    (emit (list 'primref r name))
+    r))
 
 (define (cg-frame-start emit s)
   ;; emit a instruction that will be modified by cg-frame-end
@@ -237,8 +220,7 @@
          (cg-const (cadr x) emit s))
         (($primitive)
          (cg-primitive (cadr x) emit s))
-        ((set! define)
-         ;; FIXME: define should be global-set! instead
+        ((set!)
          (cg-mutate (cadr x)
                     (codegen* (caddr x) emit s #f)
                     emit s))
@@ -275,7 +257,9 @@
                       (let ((f (codegen* (cadr x) emit s #f)))
                         (cond (tail?
                                (emit (list 'tailcall f ai))
-                               'unused)
+                               (let ((r (cg-reg s)))
+                                 (emit (list 'make-void r))
+                                 r))
                               (else
                                (let ((r (cg-reg s)))
                                  (emit (list 'funcall r f ai))

@@ -263,6 +263,22 @@
         "return Void"))
 (define-primitive ($cell-set! cell value))
 
+;; Global references
+
+(define-operation $global-ref
+  (list (string-append "name := " (argn 0))
+        "sname := (*name).(string)"
+        "return env[sname]"))
+(define-primitive ($global-ref name))
+
+(define-operation $global-set!
+  (list (string-append "name := " (argn 0))
+        (string-append "value := " (argn 1))
+        "sname := (*name).(string)"
+        "env[sname] = value"
+        "return Void"))
+(define-primitive ($global-set! name value))
+
 ;; Bytevectors
 
 (define-call bytevector? "bytevector_p" 1)

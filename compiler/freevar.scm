@@ -24,7 +24,8 @@
 ;; closures.
 
 ;; The input is from the primops pass. The output adds $ann-lambda and
-;; let forms.
+;; let forms. define forms and references to global variables are
+;; replaced with calls to $global-ref and $global-set!.
 
 (define (new-name-ctx define-name)
   ;; This is perhaps not the best approach to assigning names to
@@ -58,7 +59,9 @@
 
 (define (freevar* x env name-ctx)
   (if (symbol? x)
-      x
+      (if (memq x env)
+          x
+          (list '$primcall '$global-ref (list 'quote x)))
       (case (car x)
         ((lambda)
          (let* ((new-env (append (formals-to-list (lambda-formals x)) env))
@@ -70,14 +73,22 @@
                  body)))
         ((quote $primitive) x)
         ((define)
-         (list 'define (cadr x) (freevar* (caddr x) env
-                                          (new-name-ctx (cadr x)))))
+         (list '$primcall '$global-set! (list 'quote (cadr x))
+               (freevar* (caddr x) env
+                         (new-name-ctx (cadr x)))))
         ((set!)
-         (list 'set! (set!-name x) (freevar* (set!-expression x) env
-                                             (new-name-ctx (set!-name x)))))
-        ((if begin $primcall)
+         (if (memq x env)
+             (list 'set! (set!-name x) (freevar* (set!-expression x) env
+                                                 (new-name-ctx (set!-name x))))
+             (list '$primcall '$global-set! (list 'quote (set!-name x))
+                   (freevar* (set!-expression x) env
+                             (new-name-ctx (set!-name x))))))
+        ((if begin)
          (cons (car x) (map (lambda (x) (freevar* x env name-ctx))
                             (cdr x))))
+        (($primcall)
+         (cons (car x) (cons (cadr x) (map (lambda (x) (freevar* x env name-ctx))
+                                           (cddr x)))))
         (($funcall)
          (let ((op (cadr x)))
            ;; Tries to restore let expressions

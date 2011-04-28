@@ -65,19 +65,10 @@ var env map[string]Obj = make(map[string]Obj)
 
 func lookup(name Obj, lexenv map[string]Obj) Obj {
 	sname := (*name).(string)
-	// fmt.Printf("ref looking up %s in %v\n", sname,lexenv)
 	if lexenv != nil {
 		if binding, is_bound := lexenv[sname]; is_bound {
-			// fmt.Printf("ref found %s => ", sname)
-			// Write(binding); fmt.Printf("\n")
 			return binding
 		}
-		// fmt.Printf("ref didn't find %s\n", sname)
-	}
-	// fmt.Printf("ref looking up %s in global %v\n", sname,env)
-	if binding, is_bound := env[sname]; is_bound {
-		// fmt.Printf("ref found in global %v\n", sname)
-		return binding
 	}
 	panic(fmt.Sprintf("unbound variable: %s",sname))
 }
@@ -138,6 +129,33 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 	}
 
 	switch cmd := car(code); (*cmd).(string) {
+	case "$funcall":
+		// Procedure call
+		code := cdr(code)
+		fun := ev(car(code), false, lexenv, ct)
+		code = cdr(code)
+		args := make([]Obj, fixnum_to_int(Length(code)))
+		for i := 0; code != Eol; i, code = i+1, cdr(code) {
+			args[i] = ev(car(code), false, lexenv, ct)
+		}
+		return ap(fun, args, ct)
+	case "$primcall":
+		code = cdr(code)
+		primop := (*car(code)).(string)
+		code = cdr(code)
+		args := make([]Obj, fixnum_to_int(Length(code)))
+		for i := 0; code != Eol; i, code = i+1, cdr(code) {
+			args[i] = ev(car(code), false, lexenv, ct)
+		}
+		return evprim(primop, args, ct)
+	case "$primitive":
+		name := car(cdr(code))
+		sname := (*name).(string)
+		primitive, is_bound := primitives[sname]
+		if !is_bound {
+			panic(fmt.Sprintf("unknown primitive: %s",sname))
+		}
+		return primitive
 	case "begin":
 		var ret Obj
 		for code = cdr(code); code != Eol; code = cdr(code) {
@@ -147,12 +165,6 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 			ret = ev(car(code), tailpos && cdr(code) == Eol, lexenv, ct)
 		}
 		return ret
-	case "define":
-		code = cdr(code); name := car(code)
-		code = cdr(code)
-		sname := (*name).(string)
-		env[sname] = ev(car(code), true, lexenv, ct)
-		return Void
 	case "if":
 		code = cdr(code); test := car(code)
 		code = cdr(code); consequent := car(code)
@@ -183,18 +195,10 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 		sname := (*name).(string)
 		value := ev(car(code), true, lexenv, ct)
 		if lexenv != nil {
-			// fmt.Printf("set! looking up %s in %v\n", sname,lexenv)
 			if _, is_bound := lexenv[sname]; is_bound {
-				// fmt.Printf("set! did find %s: ",sname)
-				// Write(binding); fmt.Printf("\n")
 				lexenv[sname] = value
 				return Void
 			}
-			// fmt.Printf("set! didn't find %s\n",sname)
-		}
-		if _, is_bound := env[sname]; is_bound {
-			env[sname] = value
-			return Void
 		}
 		panic(fmt.Sprintf("attempt to mutate undefined variable: %s", sname))
 	case "quote":
@@ -220,33 +224,6 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 			}
 		}
 		return wrap(closure)
-	case "$funcall":
-		// Procedure call
-		code := cdr(code)
-		fun := ev(car(code), false, lexenv, ct)
-		code = cdr(code)
-		args := make([]Obj, fixnum_to_int(Length(code)))
-		for i := 0; code != Eol; i, code = i+1, cdr(code) {
-			args[i] = ev(car(code), false, lexenv, ct)
-		}
-		return ap(fun, args, ct)
-	case "$primcall":
-		code = cdr(code)
-		primop := (*car(code)).(string)
-		code = cdr(code)
-		args := make([]Obj, fixnum_to_int(Length(code)))
-		for i := 0; code != Eol; i, code = i+1, cdr(code) {
-			args[i] = ev(car(code), false, lexenv, ct)
-		}
-		return evprim(primop, args, ct)
-	case "$primitive":
-		name := car(cdr(code))
-		sname := (*name).(string)
-		primitive, is_bound := primitives[sname]
-		if !is_bound {
-			panic(fmt.Sprintf("unknown primitive: %s",sname))
-		}
-		return primitive
 	default:
 		name := (*cmd).(string)
 		panic(fmt.Sprintf("Unimplemented syntax: %s",name))

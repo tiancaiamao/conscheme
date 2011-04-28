@@ -38,6 +38,8 @@ func init() {
 	primitives["u8-list->bytevector"] = wrap(Procedure{name:"u8-list->bytevector",required:1,apply:apprim})
 	primitives["bytevector-length"] = wrap(Procedure{name:"bytevector-length",required:1,apply:apprim})
 	primitives["bytevector?"] = wrap(Procedure{name:"bytevector?",required:1,apply:apprim})
+	primitives["$global-set!"] = wrap(Procedure{name:"$global-set!",required:2,apply:apprim})
+	primitives["$global-ref"] = wrap(Procedure{name:"$global-ref",required:1,apply:apprim})
 	primitives["$cell-set!"] = wrap(Procedure{name:"$cell-set!",required:2,apply:apprim})
 	primitives["$cell-ref"] = wrap(Procedure{name:"$cell-ref",required:1,apply:apprim})
 	primitives["$make-cell"] = wrap(Procedure{name:"$make-cell",required:1,apply:apprim})
@@ -164,6 +166,16 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 		return bytevector_length(args[0])
 	case "bytevector?":
 		return bytevector_p(args[0])
+	case "$global-set!":
+		name := args[0]
+		value := args[1]
+		sname := (*name).(string)
+		env[sname] = value
+		return Void
+	case "$global-ref":
+		name := args[0]
+		sname := (*name).(string)
+		return env[sname]
 	case "$cell-set!":
 		v := args[0]
 		vv := (*v).(*[1]Obj)
