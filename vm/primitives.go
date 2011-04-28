@@ -6,6 +6,8 @@ import "os"
 var primitives map[string]Obj = make(map[string]Obj)
 func init() {
 	primitives["current-thread"] = wrap(Procedure{name:"current-thread",required:0,apply:apprim})
+	primitives["$receive"] = wrap(Procedure{name:"$receive",required:1,apply:apprim})
+	primitives["send"] = wrap(Procedure{name:"send",required:2,apply:apprim})
 	primitives["thread-start!"] = wrap(Procedure{name:"thread-start!",required:1,apply:apprim})
 	primitives["thread-yield!"] = wrap(Procedure{name:"thread-yield!",required:0,apply:apprim})
 	primitives["thread-specific-set!"] = wrap(Procedure{name:"thread-specific-set!",required:2,apply:apprim})
@@ -102,6 +104,10 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 	switch primop {
 	case "current-thread":
 		return ct
+	case "$receive":
+		return _receive(args[0])
+	case "send":
+		return send(args[0], args[1])
 	case "thread-start!":
 		return thread_start_ex(args[0])
 	case "thread-yield!":

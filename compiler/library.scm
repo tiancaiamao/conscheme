@@ -573,6 +573,8 @@
         (else
          (error 'make-thread "Too many arguments" thunk rest))))
 
+(define (receive) 
+  ($receive (current-thread)))
 ;;; Misc
 
 (define (error who why . irritants)
