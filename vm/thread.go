@@ -23,25 +23,21 @@ package conscheme
 
 import (
 	"runtime"
-	// "time"
+	"sync"
 )
 
 type Thread struct {
-	name, specific Obj
-	cstart chan bool
+	name, specific, thunk, queue Obj
+	once *sync.Once
+	channel chan Obj
 }
 
 func _make_thread(thunk, name Obj) Obj {
 	if procedure_p(thunk) == False { panic("bad type") }
-	cstart := make(chan bool)
-	t := Thread{name, False, cstart}
+	once := new(sync.Once)
+	channel := make(chan Obj, 100)
+	t := Thread{name, False, thunk, Eol, once, channel}
 	thread := wrap(t)
-	go func (thunk,current_thread Obj) {
-		t := (*current_thread).(Thread)
-		<- t.cstart
-		// TODO: pass current_thread to ap here
-		ap(thunk, nil, current_thread)
-	} (thunk,thread);
 	return thread
 }
 
@@ -72,15 +68,48 @@ func thread_specific_set_ex(thread, v Obj) Obj {
 	return Void
 }
 
+func thread_queue(thread Obj) Obj {
+	if is_immediate(thread) { panic("bad type") }
+	t := (*thread).(Thread)
+	return t.specific
+}
+
+func thread_queue_set_ex(thread, v Obj) Obj {
+	if is_immediate(thread) { panic("bad type") }
+	t := (*thread).(Thread)
+	t.specific = v
+	return Void
+}
+
+
 func thread_yield_ex() Obj {
 	runtime.Gosched()
 	return Void
+}
+
+func send(thread, o Obj) Obj {
+	if is_immediate(thread) { panic("bad type") }
+	t := (*thread).(Thread)
+	go func(t Thread, o Obj){
+		t.channel <- o
+	}(t, o)
+	return Void
+}
+
+func _receive(thread Obj) Obj {
+	if is_immediate(thread) { panic("bad type") }
+	t := (*thread).(Thread)
+	return <- t.channel
 }
 
 // XXX: should protect against calling thread-start! twice. use a semaphore.
 func thread_start_ex(thread Obj) Obj {
 	if is_immediate(thread) { panic("bad type") }
 	t := (*thread).(Thread)
-	t.cstart <- true
+
+	go t.once.Do(func () {
+		ap(t.thunk, nil, thread)
+	});
+
 	return Void
 }
