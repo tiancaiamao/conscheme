@@ -184,13 +184,13 @@ func set_cdr_ex(x,value Obj) Obj {
 	return Void
 }
 
-func list(v ...Obj) Obj {
-	ret := Eol
-	for i := len(v) - 1; i >= 0; i-- {
-		ret = Cons(v[i], ret)
-	}
-	return ret
-}
+// func list(v ...Obj) Obj {
+// 	ret := Eol
+// 	for i := len(v) - 1; i >= 0; i-- {
+// 		ret = Cons(v[i], ret)
+// 	}
+// 	return ret
+// }
 
 func Length(x Obj) Obj {
 	var i int

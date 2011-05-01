@@ -258,6 +258,5 @@ func apply(args []Obj, ct Obj) Obj {
 
 // Runs the simple language emitted by the "compiler"
 func Eval(code Obj) Obj {
-	return ev(code, true, nil,
-		wrap(Thread{name:String_string("primordial"), specific: False}))
+	return ev(code, true, nil, primordial)
 }

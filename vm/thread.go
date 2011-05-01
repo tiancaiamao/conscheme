@@ -22,6 +22,7 @@
 package conscheme
 
 import (
+	"container/list"
 	"runtime"
 	"sync"
 )
@@ -30,13 +31,27 @@ type Thread struct {
 	name, specific, thunk, queue Obj
 	once *sync.Once
 	channel chan Obj
+	links *list.List
+}
+
+var primordial Obj
+
+func init() {
+	name := String_string("primordial")
+	once := new(sync.Once)
+	channel := make(chan Obj, 100)
+	links := list.New()
+	thunk := Eol		// XXX: makes (thread-start! primordial) not work
+	t := Thread{name, False, thunk, Eol, once, channel, links}
+	primordial = wrap(t)
 }
 
 func _make_thread(thunk, name Obj) Obj {
 	if procedure_p(thunk) == False { panic("bad type") }
 	once := new(sync.Once)
 	channel := make(chan Obj, 100)
-	t := Thread{name, False, thunk, Eol, once, channel}
+	links := list.New()
+	t := Thread{name, False, thunk, Eol, once, channel, links}
 	thread := wrap(t)
 	return thread
 }
@@ -87,6 +102,13 @@ func thread_yield_ex() Obj {
 	return Void
 }
 
+func thread_link_ex(_t1, _t2 Obj) Obj {
+	if is_immediate(_t1) || is_immediate(_t2) { panic("bad type") }
+	t1 := (*_t1).(Thread)
+	t1.links.PushFront(_t2)
+	return Void
+}
+
 func send(thread, o Obj) Obj {
 	if is_immediate(thread) { panic("bad type") }
 	t := (*thread).(Thread)
@@ -102,12 +124,19 @@ func _receive(thread Obj) Obj {
 	return <- t.channel
 }
 
-// XXX: should protect against calling thread-start! twice. use a semaphore.
 func thread_start_ex(thread Obj) Obj {
 	if is_immediate(thread) { panic("bad type") }
 	t := (*thread).(Thread)
 
 	go t.once.Do(func () {
+		defer func() {
+			if err := recover(); err != nil {
+				for e := t.links.Front(); e != nil; e = e.Next() {
+					send((e.Value).(Obj), vector(intern("died"),thread))
+				}
+				return
+			}
+		}()
 		ap(t.thunk, nil, thread)
 	});
 
