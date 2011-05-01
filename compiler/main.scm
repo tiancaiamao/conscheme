@@ -29,9 +29,10 @@
 (include "aconv.scm")
 (include "mutation.scm")
 (include "freevar.scm")
+(include "closures.scm")
 (include "serialize.scm")
 (include "expander.scm")
-;; (include "codegen.scm")
+(include "codegen.scm")
 
 (cond-expand
  (guile (use-modules (ice-9 pretty-print)
@@ -40,13 +41,39 @@
          (write x)
          (newline))))
 
+(define (top-level-cps x)
+  ;; Convert the top level to cps form (because we shamefully don't
+  ;; have register allocation).
+  (cond ((and (pair? x) (eq? (car x) 'begin))
+         (let lp ((body (cdr x)))
+           (list '$funcall (list '$ann-lambda '() 'topcps '()
+                                 (if (null? (cdr body))
+                                     (car body)
+                                     (list 'begin
+                                           (car body)
+                                           (lp (cdr body))))))))
+        (else x)))
+
 (define (compile-expression expr)
-  (freevar (primops (mutation (aconv (expand expr))))))
+  (top-level-cps (freevar (primops (mutation (aconv (expand expr)))))))
 
 (define (compile)
   (let ((output-file "main.cso")
         (input-file "main.scm"))
     (let ((code (compile-expression (list 'include input-file))))
+      (if (member "print" (command-line))
+          (pretty-print code))
+      (if (file-exists? output-file)
+          (delete-file output-file))
+      (call-with-port (open-file-output-port output-file)
+        (lambda (p)
+          (serialize-object code p))))))
+
+(define (bytecode-compile)
+  (let ((output-file "conscheme.image")
+        (input-file "main.scm"))
+    (let ((code (codegen (closures (compile-expression (list 'include input-file))))))
+      ;; TODO: the code is currently in symbolic format, it needs to be assembled
       (if (member "print" (command-line))
           (pretty-print code))
       (if (file-exists? output-file)
@@ -131,7 +158,14 @@
              ;; (newline)
              ;; (write (compile-expression datum))
              ;; (newline)
-             (let ((result (eval datum (interaction-environment))))
+             (let* ((repl (current-thread))
+                    (t (make-thread
+                        (lambda ()
+                          (send repl (eval datum (interaction-environment))))
+                        "repl expression")))
+               (thread-link! t (current-thread))
+               (thread-start! t))
+             (let ((result (receive)))
                (unless (eq? result (unspecified))
                  (write result)
                  (newline))
@@ -147,6 +181,8 @@
 
 (cond ((member "compile" (command-line))
        (compile))
+      ((member "bytecode-compile" (command-line))
+       (bytecode-compile))
       ((member "genprim" (command-line))
        (print-operations (current-output-port)))
       ((member "tests" (command-line))

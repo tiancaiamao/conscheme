@@ -21,12 +21,69 @@
 
 ;; Generates byte code. The input comes from the closure analysis pass.
 
+;; XXX: the top-level must be transformed into CPS form so that the
+;; body of $labels isn't so enormous and uses so many registers (we
+;; don't have register allocation)
+
+;; IIII INNN NNNN RRRR RRRR RRrr rrrr rrrr
+(define (op1 i n r1 r2)
+  (if (> n #b1111111) (error 'op1 "n too large" i n r1 r2))
+  (if (> r1 #b1111111111) (error 'op1 "r1 too large" i n r1 r2))
+  (if (> r2 #b1111111111) (error 'op1 "r2 too large" i n r1 r2))
+  (bitwise-ior (bitwise-arithmetic-shift-left i 27)
+               (bitwise-arithmetic-shift-left n 20)
+               (bitwise-arithmetic-shift-left r1 10)
+               r2))
+(define FRAME         #b00001)          ; reg
+(define RETURN        #b00010)          ; reg
+(define PUSH          #b00011)          ; reg
+(define MAKE-VOID     #b00100)          ; reg
+(define MOVE          #b00101)          ; reg1 reg2
+(define CLOSURE.NAME  #b00110)          ; reg1 reg2
+(define CLOSURE-REF   #b00111)          ; reg n
+(define CLOSURE-SET!  #b01000)          ; n reg
+(define CLOSURE       #b01010)          ; reg n
+(define TAILCALL      #b01011)          ; reg n
+(define CONSARGS      #b01100)          ; n
+(define CLOSURE.VAR   #b01101)          ; reg1 n reg2
+(define FUNCALL       #b01110)          ; reg1 reg2 n
+
+;; IIII INNN NNNN NNNN NNNN NNrr rrrr rrrr
+(define (op2 i n r)
+  (if (> n #b1111111111111111111) (error 'op2 "n too large" i n r))
+  (if (> r #b1111111111) (error 'op2 "r too large" i n r))
+  (bitwise-ior (bitwise-arithmetic-shift-left i 27)
+               (bitwise-arithmetic-shift-left
+                (bitwise-arithmetic-shift-right n 2)
+                10)
+               r))
+(define JUMP          #b00000)          ; label
+(define CONST-REF     #b01001)          ; reg n
+(define BF            #b01111)          ; reg label
+(define CLOSURE.LABEL #b10000)          ; reg label
+
+;; IIII INNN NNNN NNnn nnnn nnrr rrrr rrrr
+(define (op3 i n1 n2 r)
+  (if (> n1 #b111111111) (error 'op3 "n1 too large" i n1 n2 r))
+  (if (> n2 #xff) (error 'op3 "n2 too large" n2))
+  (if (> r #b1111111111) (error 'op3 "r too large" i n1 n2 r))
+  (bitwise-ior (bitwise-arithmetic-shift-left i 27)
+               (bitwise-arithmetic-shift-left n1 19)
+               (bitwise-arithmetic-shift-left n2 10)
+               r))
+(define PRIMCALL      #b10001)          ; reg name n
+(define PRIMREF       #b10010)          ; reg name
+
+;; A short description of each instruction can be found at
+;; https://github.com/weinholt/conscheme/wiki/Bytecode-instructions
+
 (define (cg-reg-gen start)
   (let ((r 0))
     (lambda ()
       (let ((ret r))
         (set! r (+ r 1))
-        (list 'reg ret)))))
+        #;(list 'reg ret)
+        ret))))
 
 (define (cg-new-state)
   (let ((env '())
@@ -45,7 +102,7 @@
                              (if old
                                  (cdr old)
                                  (let ((idx i))
-                                   ;; (print "#;const " i " = " (car x))
+                                   (print "#;const " i " = " (car x))
                                    (set! consts (cons (cons (car x) i) consts))
                                    (set! i (+ idx 1))
                                    i)))))))
@@ -97,7 +154,7 @@
       (if v
           (case (cadr v)
             ((closure)
-             (emit (list 'closure-set! reg (cddr v) reg)))
+             (emit (list 'closure-set! (cddr v) reg)))
             ((local)
              (emit (list 'move (cddr v) reg)))
             (else
@@ -137,6 +194,7 @@
   ;; record the number of the highest used register
   (set-car! (cdr (vector-ref s 4))
             (cg-reg s)))
+
 
 (define (codegen* x emit s tail?)
   ;; (display (list 'codegen* x)) (newline)
@@ -179,14 +237,14 @@
                                  ((pair? formals)
                                   (lp (cdr formals)
                                       (cons (cons (car formals)
-                                                  (cons 'local (list 'reg fi)))
+                                                  (cons 'local fi #;(list 'reg fi)))
                                             env)
                                       (+ fi 1)))
                                  (else
                                   (emit (list 'consargs fi))
                                   (lp '()
                                       (cons (cons formals
-                                                  (cons 'local (list 'reg fi)))
+                                                  (cons 'local fi #;(list 'reg fi)))
                                             env)
                                       (+ fi 1))))))))
                    (cadr x)))
@@ -271,21 +329,115 @@
         (else
          (error 'codegen* "Bad expression" x)))))
 
+(define (primitive-number name)
+  (case name
+    ((cons) 0)
+    (else
+     (display "#;unknown #;primitive ")
+     (display name)
+     (newline)
+     #xff)))
+
+(define (make-assembler port)
+  ;; One-pass assembler. Forward references are patched by fix-op2.
+  (let ((relocs '())
+        (labels '())
+        (pc 0))
+    (define (put i)
+      (set! pc (+ pc 4))
+      (put-u8 port (bitwise-and #xff i))
+      (put-u8 port (bitwise-and #xff (bitwise-arithmetic-shift-right i 8)))
+      (put-u8 port (bitwise-and #xff (bitwise-arithmetic-shift-right i 16)))
+      (put-u8 port (bitwise-and #xff (bitwise-arithmetic-shift-right i 24))))
+    (define (fix-op2 old-i dst)
+      (let ((opcode (bitwise-arithmetic-shift-right old-i 27))
+            (old-pc (bitwise-arithmetic-shift-left
+                     (bitwise-and (bitwise-arithmetic-shift-right old-i 10)
+                                  #b11111111111111111)
+                     2))
+            (r (bitwise-and old-i #b1111111111)))
+        (let ((new-i (op2 opcode (- dst old-pc) r)))
+          (set-port-position! port old-pc)
+          (put new-i)
+          (set-port-position! port pc)
+          #;(display "#;FIX-OP2 ")
+          #;(display (list 'opcode (number->string opcode 2)
+                         'old-pc (number->string old-pc 16)
+                         'newdest (number->string (- dst old-pc) 16)
+                         'r (number->string r)
+                         'OLD (number->string old-i 16)
+                         'NEW (number->string new-i 16)))
+          #;(newline))))
+    (lambda (i)
+      ;; (display (list (number->string pc 16) i)) (newline)
+      (case (car i)
+        ((label)
+         (let ((name (cadr i)))
+           (set! labels (cons (cons name pc) labels))
+           (let lp ((relocs* relocs)
+                    (ret '()))
+             (cond ((null? relocs*) (set! relocs ret))
+                   ((eq? (caar relocs*) name)
+                    (fix-op2 (cdar relocs*) pc #;(cdr (assq (caar relocs*) labels)))
+                    (lp (cdr relocs*) ret))
+                   (else
+                    (lp (cdr relocs*) (cons (car relocs*) ret)))))))
+        ;; op1 format
+        ((frame) (put (op1 FRAME 0 0 (cadr i))))
+        ((return) (put (op1 RETURN 0 0 (cadr i))))
+        ((push) (put (op1 PUSH 0 0 (cadr i))))
+        ((make-void) (put (op1 MAKE-VOID 0 0 (cadr i))))
+        ((move) (put (op1 MOVE 0 (caddr i) (cadr i))))
+        ((closure.name) (put (op1 CLOSURE.NAME 0 (caddr i) (cadr i))))
+        ((closure-ref) (put (op1 CLOSURE-REF (caddr i) 0 (cadr i))))
+        ((closure-set!) (put (op1 CLOSURE-SET! (cadr i) 0 (caddr i))))
+        ((closure) (put (op1 CLOSURE (caddr i) 0 (cadr i))))
+        ((tailcall) (put (op1 TAILCALL (caddr i) 0 (cadr i))))
+        ((consargs) (put (op1 CONSARGS (cadr i) 0 0)))
+        ((closure.var) (put (op1 CLOSURE.VAR (caddr i) (cadddr i) (cadr i))))
+        ((funcall) (put (op1 FUNCALL (cadddr i) (caddr i) (cadr i))))
+        ;; op2 format
+        ((jump)
+         (let* ((name (cadr i)) (l (assq name labels)) (dst (if l (cdr l) 0)))
+           ;; (display (list 'jump name l dst)) (newline)
+           (if (not l) (set! relocs (cons (cons name (op2 JUMP pc 0)) relocs)))
+           (put (op2 JUMP (- dst pc) 0))))
+        ((const-ref)
+         (put (op2 CONST-REF (caddr i) (cadr i))))
+        ((bf)
+         (let* ((name (caddr i)) (l (assq name labels)) (dst (if l (cdr l) 0)))
+           ;; (display (list 'bf name l dst)) (newline)
+           (if (not l) (set! relocs (cons (cons name (op2 BF pc (cadr i))) relocs)))
+           (put (op2 BF (- dst pc) (cadr i)))))
+        ((closure.label)
+         (let* ((name (caddr i)) (l (assq name labels)) (dst (if l (cdr l) 0)))
+           (if (not l) (set! relocs (cons (cons name (op2 CLOSURE.LABEL pc (cadr i))) relocs)))
+           (put (op2 CLOSURE.LABEL (- dst pc) (cadr i)))))
+        ;; op3 format
+        ((primcall)
+         (put (op3 PRIMCALL (cadddr i) (primitive-number (caddr i)) (cadr i))))
+        ((primref)
+         (put (op3 PRIMREF 0 (primitive-number (cadr i)) (cadr i))))
+        (else
+         (error 'codegen "Internal error: bad instruction" i))))))
+
 (define (codegen x)
+  (if (file-exists? "/tmp/conscheme.out")
+      (delete-file "/tmp/conscheme.out"))
   (let* ((code '())
-         (emit (lambda (expr)
-                 ;; (display "#;d ")
-                 ;; (display expr)
-                 ;; (newline)
-                 (set! code (cons expr code))))
+         (emit (lambda (i) (set! code (cons i code))))
          (s (cg-new-state)))
     (codegen* x emit s #f)
-    (vector (reverse code)
-            (cg-const-pool s))))
+    (set! code (reverse code))
+    ;;(pretty-print code)
+    (call-with-port (open-file-output-port "/tmp/conscheme.out")
+      (lambda (port) (for-each (make-assembler port) code)))
+    (vector #vu8() (cg-const-pool s))))
 
-;; (pretty-print
-;;  (codegen
-;;   (closures
-;;    (compile-expression
-;;     '(lambda (x) (if x #f #t))
-;;     #;'(include "main.scm")))))
+#;
+(pretty-print
+ (codegen
+  (closures
+   (compile-expression
+    '(lambda (x) (if x #f (cons #t (lambda (y) (cons y x)))))
+    #;'(include "main.scm")))))
