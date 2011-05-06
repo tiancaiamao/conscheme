@@ -219,7 +219,12 @@ func number_add(x,y Obj) Obj {
 		}
 		switch vy := (*y).(type) {
 		case *big.Int:
-			return wrap(z.Add(vx,vy))
+			ret := z.Add(vx,vy)
+			if ret.Cmp(fixnum_min_Int) >= 0 && ret.Cmp(fixnum_max_Int) <= 0 {
+			 	return Make_fixnum(int(ret.Int64()))
+			} else {
+				return wrap(ret)
+			}
 		default:
 			panic("bad type")
 		}
@@ -234,7 +239,7 @@ func number_subtract(x,y Obj) Obj {
 		i1 := uintptr(unsafe.Pointer(x))
 		i2 := uintptr(unsafe.Pointer(y))
 		r := (int(i1) >> fixnum_shift) - (int(i2) >> fixnum_shift)
-		if r > fixnum_min && r < fixnum_max {
+		if r >= fixnum_min && r <= fixnum_max {
 			return Make_fixnum(r)
 		} else {
 			return wrap(big.NewInt(int64(r)))
@@ -246,7 +251,9 @@ func number_subtract(x,y Obj) Obj {
 		panic("bad type")
 	}
 
-	if xfx { return number_subtract(y,x) }
+	if xfx {
+		x = wrap(big.NewInt(int64(fixnum_to_int(x))))
+	}
 
 	switch vx := (*x).(type) {
 	case *big.Int:
@@ -257,7 +264,12 @@ func number_subtract(x,y Obj) Obj {
 		}
 		switch vy := (*y).(type) {
 		case *big.Int:
-			return wrap(z.Sub(vx,vy))
+			ret := z.Sub(vx,vy)
+			if ret.Cmp(fixnum_min_Int) >= 0 && ret.Cmp(fixnum_max_Int) <= 0 {
+			 	return Make_fixnum(int(ret.Int64()))
+			} else {
+				return wrap(ret)
+			}
 		default:
 			panic("bad type")
 		}
