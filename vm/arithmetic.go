@@ -39,11 +39,12 @@ const (
 	fixnum_min = -fixnum_max - 1
 )
 
-var fixnum_max_Int, fixnum_min_Int *big.Int
+var fixnum_max_Int, fixnum_min_Int, one_Int *big.Int
 
 func init() {
 	fixnum_max_Int = big.NewInt(int64(fixnum_max))
 	fixnum_min_Int = big.NewInt(int64(fixnum_min))
+	one_Int = big.NewInt(int64(1))
 }
 
 // Exact complex numbers. Inexact complex numbers use complex128.
@@ -219,12 +220,7 @@ func number_add(x,y Obj) Obj {
 		}
 		switch vy := (*y).(type) {
 		case *big.Int:
-			ret := z.Add(vx,vy)
-			if ret.Cmp(fixnum_min_Int) >= 0 && ret.Cmp(fixnum_max_Int) <= 0 {
-			 	return Make_fixnum(int(ret.Int64()))
-			} else {
-				return wrap(ret)
-			}
+			return simpBig(z.Add(vx,vy))
 		default:
 			panic("bad type")
 		}
@@ -254,22 +250,16 @@ func number_subtract(x,y Obj) Obj {
 	if xfx {
 		x = wrap(big.NewInt(int64(fixnum_to_int(x))))
 	}
+	if yfx {
+		y = wrap(big.NewInt(int64(fixnum_to_int(y))))
+	}
 
 	switch vx := (*x).(type) {
 	case *big.Int:
 		var z *big.Int = big.NewInt(0)
-		if yfx {
-			vy := big.NewInt(int64(fixnum_to_int(y)))
-			return wrap(z.Sub(vx,vy))
-		}
 		switch vy := (*y).(type) {
 		case *big.Int:
-			ret := z.Sub(vx,vy)
-			if ret.Cmp(fixnum_min_Int) >= 0 && ret.Cmp(fixnum_max_Int) <= 0 {
-			 	return Make_fixnum(int(ret.Int64()))
-			} else {
-				return wrap(ret)
-			}
+			return simpBig(z.Sub(vx,vy))
 		default:
 			panic("bad type")
 		}
@@ -298,24 +288,107 @@ func number_divide(x,y Obj) Obj {
 		panic("bad type")
 	}
 
-	if xfx { return number_divide(y,x) }
+	if xfx {
+		x = wrap(big.NewInt(int64(fixnum_to_int(x))))
+	}
+	if yfx {
+		y = wrap(big.NewInt(int64(fixnum_to_int(y))))
+		//return wrap(z.Div(vx,vy))
+	}
 
 	switch vx := (*x).(type) {
 	case *big.Int:
 		var z *big.Int = big.NewInt(0)
-		if yfx {
-			vy := big.NewInt(int64(fixnum_to_int(y)))
-			return wrap(z.Add(vx,vy))
-		}
 		switch vy := (*y).(type) {
 		case *big.Int:
-			return wrap(z.Add(vx,vy))
+			return simpBig(z.Div(vx,vy))
+		case *big.Rat:
+			z := big.NewRat(1,1)
+			z.SetInt(vx)
+			return simpRat(z.Quo(z,vy))
 		default:
 			panic("bad type")
+		}
+	case *big.Rat:
+		z := big.NewRat(1,1)
+		switch vy := (*y).(type) {
+		case *big.Int:
+			z.SetInt(vy)
+			return simpRat(z.Quo(vx,z))
+		case *big.Rat:
+			return simpRat(z.Quo(vx,vy))
 		}
 	}
 	panic("bad type")
 }
+
+func simpRat(x *big.Rat) Obj {
+	if x.Denom().Cmp(one_Int) == 0 {
+		return simpBig(x.Num())
+	}
+	return wrap(x)
+}
+
+func simpBig(x *big.Int) Obj {
+	if x.Cmp(fixnum_min_Int) >= 0 && x.Cmp(fixnum_max_Int) <= 0 {
+		return Make_fixnum(int(x.Int64()))
+	}
+	return wrap(x)
+}
+
+func number_multiply(x, y Obj) Obj {
+	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
+	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	if xfx && yfx {
+		i1 := int64(int(uintptr(unsafe.Pointer(x))))
+		i2 := int64(int(uintptr(unsafe.Pointer(y))))
+		r := (i1 >> fixnum_shift) * (i2 >> fixnum_shift)
+		if r > int64(fixnum_min) && r < int64(fixnum_max) {
+			return Make_fixnum(int(r))
+		} else {
+			return wrap(big.NewInt(r))
+		}
+	}
+
+	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
+		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
+		panic("bad type")
+	}
+
+	if xfx {
+		x = wrap(big.NewInt(int64(fixnum_to_int(x))))
+	}
+	if yfx {
+		y = wrap(big.NewInt(int64(fixnum_to_int(y))))
+	}
+
+	switch vx := (*x).(type) {
+	case *big.Int:
+		var z *big.Int = big.NewInt(0)
+		switch vy := (*y).(type) {
+		case *big.Int:
+			return simpBig(z.Mul(vx,vy))
+		case *big.Rat:
+			z := big.NewRat(1,1)
+			z.SetInt(vx)
+			return simpRat(z.Mul(z,vy))
+		default:
+			panic("bad type")
+		}
+	case *big.Rat:
+		z := big.NewRat(1,1)
+		switch vy := (*y).(type) {
+		case *big.Int:
+			z.SetInt(vy)
+			return simpRat(z.Mul(vx,z))
+		case *big.Rat:
+			return simpRat(z.Mul(vx,vy))
+		}
+	}
+	panic("bad type")
+}
+
+
 
 func number_cmp(x,y Obj) Obj {
 	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
