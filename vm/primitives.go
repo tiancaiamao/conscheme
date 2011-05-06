@@ -67,6 +67,7 @@ func init() {
 	primitives["denominator"] = wrap(Procedure{name:"denominator",required:1,apply:apprim})
 	primitives["$cmp"] = wrap(Procedure{name:"$cmp",required:2,apply:apprim})
 	primitives["$-"] = wrap(Procedure{name:"$-",required:2,apply:apprim})
+	primitives["$*"] = wrap(Procedure{name:"$*",required:2,apply:apprim})
 	primitives["$/"] = wrap(Procedure{name:"$/",required:2,apply:apprim})
 	primitives["$+"] = wrap(Procedure{name:"$+",required:2,apply:apprim})
 	primitives["$string->number"] = wrap(Procedure{name:"$string->number",required:2,apply:apprim})
@@ -248,6 +249,8 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 		return number_cmp(args[0], args[1])
 	case "$-":
 		return number_subtract(args[0], args[1])
+	case "$*":
+		return number_multiply(args[0], args[1])
 	case "$/":
 		return number_divide(args[0], args[1])
 	case "$+":

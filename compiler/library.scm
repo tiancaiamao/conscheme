@@ -99,6 +99,8 @@
 
 (define (/ x y) ($/ x y))
 
+(define (* x y) ($* x y))
+
 ;; (define (+ . rest)
 ;;   ;; wrapper around $+
 ;;   (let lp ((rest rest)

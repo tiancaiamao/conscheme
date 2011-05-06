@@ -181,6 +181,7 @@
 (define-call $string->number "_string_to_number" 2)
 (define-call $+ "number_add" 2)
 (define-call $/ "number_divide" 2)
+(define-call $* "number_multiply" 2)
 (define-call $- "number_subtract" 2)
 (define-call $cmp "number_cmp" 2)
 (define-call denominator "denominator" 1)
