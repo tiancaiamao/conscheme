@@ -288,6 +288,8 @@
 (define-call bytevector-length "bytevector_length" 1)
 (define-call u8-list->bytevector "u8_list_to_bytevector" 1)
 (define-call string->utf8 "string_to_utf8" 1)
+(define-call $open-bytevector-output-port "_open_bytevector_output_port" 0)
+(define-call $bytevector-output-port-extract "_bytevector_output_port_extract" 1)
 
 ;; I/O
 

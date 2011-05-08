@@ -634,3 +634,7 @@
                         (car rest))))
         (set! x (+ x 1))
         (string->symbol (string-append prefix (number->string x)))))))
+
+(define (open-bytevector-output-port)
+  (let ((p ($open-bytevector-output-port)))
+    (values p (lambda () ($bytevector-output-port-extract p)))))

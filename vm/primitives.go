@@ -37,6 +37,8 @@ func init() {
 	primitives["output-port?"] = wrap(Procedure{name:"output-port?",required:1,apply:apprim})
 	primitives["input-port?"] = wrap(Procedure{name:"input-port?",required:1,apply:apprim})
 	primitives["port?"] = wrap(Procedure{name:"port?",required:1,apply:apprim})
+	primitives["$bytevector-output-port-extract"] = wrap(Procedure{name:"$bytevector-output-port-extract",required:1,apply:apprim})
+	primitives["$open-bytevector-output-port"] = wrap(Procedure{name:"$open-bytevector-output-port",required:0,apply:apprim})
 	primitives["string->utf8"] = wrap(Procedure{name:"string->utf8",required:1,apply:apprim})
 	primitives["u8-list->bytevector"] = wrap(Procedure{name:"u8-list->bytevector",required:1,apply:apprim})
 	primitives["bytevector-length"] = wrap(Procedure{name:"bytevector-length",required:1,apply:apprim})
@@ -168,6 +170,10 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 		return input_port_p(args[0])
 	case "port?":
 		return port_p(args[0])
+	case "$bytevector-output-port-extract":
+		return _bytevector_output_port_extract(args[0])
+	case "$open-bytevector-output-port":
+		return _open_bytevector_output_port()
 	case "string->utf8":
 		return string_to_utf8(args[0])
 	case "u8-list->bytevector":

@@ -398,6 +398,42 @@ func string_to_utf8(str Obj) Obj {
 	return wrap([]byte(string((*str).([]int))))
 }
 
+type ByteSink struct {
+	buf []byte
+	written int
+}
+
+func (sink *ByteSink) Write(buf []byte) (int, os.Error) {
+	for len(sink.buf) < sink.written + len(buf) {
+		nbuf := make([]byte, len(sink.buf) * 2)
+		copy(nbuf, sink.buf[:sink.written])
+		sink.buf = nbuf
+	}
+
+	copy(sink.buf[sink.written:], buf)
+
+	sink.written += len(buf)
+
+	return len(buf), nil
+}
+
+func _open_bytevector_output_port() Obj {
+	sink := &ByteSink{buf: make([]byte, 32)}
+	return wrap(&OutputPort{w: sink, is_binary: true})
+}
+
+func _bytevector_output_port_extract(p Obj) Obj {
+	if is_immediate(p) { panic("bad type") }
+	v := (*p).(*OutputPort)
+	sink := (v.w).(*ByteSink)
+
+	ret := make([]byte, sink.written)
+	copy(ret, sink.buf)
+	sink.written = 0
+
+	return wrap(ret)
+}
+
 // Misc
 
 func Command_line() Obj {
