@@ -185,7 +185,9 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 	case "$global-ref":
 		name := args[0]
 		sname := (*name).(string)
-		return env[sname]
+		v, def := env[sname]
+		if !def { panic(fmt.Sprintf("undefined top-level variable: %s",sname)) }
+		return v
 	case "$cell-set!":
 		v := args[0]
 		vv := (*v).(*[1]Obj)

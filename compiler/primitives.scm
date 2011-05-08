@@ -269,7 +269,9 @@
 (define-operation $global-ref
   (list (string-append "name := " (argn 0))
         "sname := (*name).(string)"
-        "return env[sname]"))
+        "v, def := env[sname]"
+        "if !def { panic(fmt.Sprintf(\"undefined top-level variable: %s\",sname)) }"
+        "return v"))
 (define-primitive ($global-ref name))
 
 (define-operation $global-set!

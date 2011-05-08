@@ -87,7 +87,8 @@
 ;; max min
 
 (define (+ x y) ($+ x y))
-;; *
+
+(define (* x y) ($* x y))
 
 (define (- x . xs)
   (cond ((null? xs)
@@ -99,7 +100,6 @@
 
 (define (/ x y) ($/ x y))
 
-(define (* x y) ($* x y))
 
 ;; (define (+ . rest)
 ;;   ;; wrapper around $+
@@ -272,7 +272,16 @@
 
 ;; string-ci=? string<? string>? string<=? string>=? string-ci<? string-ci>?
 ;; string-ci<=? string-ci>=?
-;; substring
+
+(define (substring s start end)
+  (let ((ret (make-string (- end start) #\space)))
+    (let lp ((i 0)
+             (i* start))
+      (cond ((= i* end)
+             ret)
+            (else
+             (string-set! ret i (string-ref s i*))
+             (lp (+ i 1) (+ i* 1)))))))
 
 (define (string-append . xs)
   (let lp ((strings xs) (len 0))
@@ -324,8 +333,26 @@
 
 ;;; Vectors
 
-;; vector vector->list list->vector
-;; vector-fill!
+(define (vector->list v)
+  (let lp ((ret '()) (i (- (vector-length v) 1)))
+    (if (< i 0)
+        ret
+        (lp (cons (vector-ref v i) ret) (- i 1)))))
+
+(define (list->vector l)
+  (let ((ret (make-vector (length l) #f)))
+    (let lp ((l l) (i 0))
+      (cond ((null? l)
+             ret)
+            (else
+             (vector-set! ret i (car l))
+             (lp (cdr l) (+ i 1)))))))
+
+(define (vector-fill! v e)
+  (let lp ((i 0))
+    (unless (= i (vector-length v))
+      (vector-set! v i e)
+      (lp (+ i 1)))))
 
 ;;; Control features
 
@@ -347,8 +374,15 @@
          (for-each f (cdr l)))))
 
 ;; call-with-current-continuation call/cc
-;; values call-with-values
 ;; dynamic-wind
+
+;; This is not really how it's supposed to be done:
+(define (values . x)
+  x)
+
+(define (call-with-values prod cons)
+  (apply cons (prod)))
+
 
 (define (eval expr environment)
   ($eval (compile-expression expr)))
@@ -371,7 +405,6 @@
 
 ;; with-input-from-file with-output-to-file
 ;; open-output-file
-;; close-input-port close-output-port
 
 (define (read-char . rest)
   (if (null? rest)
