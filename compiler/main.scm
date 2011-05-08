@@ -73,7 +73,6 @@
   (let ((output-file "conscheme.image")
         (input-file "main.scm"))
     (let ((code (codegen (closures (compile-expression (list 'include input-file))))))
-      ;; TODO: the code is currently in symbolic format, it needs to be assembled
       (if (member "print" (command-line))
           (pretty-print code))
       (if (file-exists? output-file)

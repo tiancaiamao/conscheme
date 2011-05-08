@@ -397,8 +397,6 @@
          (error 'codegen "Internal error: bad instruction" i))))))
 
 (define (codegen x)
-  (if (file-exists? "/tmp/conscheme.out")
-      (delete-file "/tmp/conscheme.out"))
   (let* ((code '())
          (emit (lambda (i) (set! code (cons i code))))
          (s (cg-new-state)))
@@ -406,9 +404,11 @@
     (set! code (reverse code))
     ;;(pretty-print code)
     (let ((labels (find-labels code)))
-      (call-with-port (open-file-output-port "/tmp/conscheme.out")
-        (lambda (port) (for-each (make-assembler port labels) code))))
-    (vector #vu8() (cg-const-pool s))))
+      (call-with-values
+        open-bytevector-output-port
+        (lambda (port extract)
+          (for-each (make-assembler port labels) code)
+          (vector (extract) (cg-const-pool s)))))))
 
 #;
 (pretty-print
