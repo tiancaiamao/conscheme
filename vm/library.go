@@ -398,6 +398,7 @@ func string_to_utf8(str Obj) Obj {
 	return wrap([]byte(string((*str).([]int))))
 }
 
+// TODO: should use bytes.Buffer instead
 type ByteSink struct {
 	buf []byte
 	written int

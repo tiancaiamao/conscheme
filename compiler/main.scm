@@ -79,7 +79,7 @@
           (delete-file output-file))
       (call-with-port (open-file-output-port output-file)
         (lambda (p)
-          (serialize-object code p))))))
+          (serialize-object code p '(bytecode . 1)))))))
 
 (define (print . x) (for-each display x) (newline))
 
@@ -185,9 +185,11 @@
       ((member "genprim" (command-line))
        (print-operations (current-output-port)))
       ((member "tests" (command-line))
+       ;; TODO: move to a script
        (tests))
       ((member "repl" (command-line))
+       ;; TODO: run this when there are no arguments
        (repl))
       (else
-       (display "Usage: main compile|genprim.\n")
+       (display "Usage: main [compile|bytecode-compile|genprim|repl].\n")
        (exit 1)))

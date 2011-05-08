@@ -139,9 +139,8 @@
         (else
          (error 'serialize "Can not serialize this value" x))))
 
-(define (serialize-object obj p)
+(define (serialize-object obj p . alist)
   (write-magic p)
   ;; alist header
-  (serialize '() p)
+  (serialize alist p)
   (serialize obj p))
-

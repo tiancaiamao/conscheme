@@ -32,9 +32,14 @@ import (
 type Procedure struct {
 	name string
 	required int
+	apply func (proc *Procedure, args []Obj, ct Obj) Obj
+	// This is for the bytecode vm:
+	label int
+	free []Obj
+	bc []uint32
+	consts []Obj
+	// This is for procedures made by eval:
 	formals Obj
-	apply func (proc Procedure, args []Obj, ct Obj) Obj
-	// These parts are specific to eval
 	lexenv map[string]Obj
 	body Obj
 }
@@ -42,13 +47,13 @@ type Procedure struct {
 func procedure_p(x Obj) Obj {
 	if is_immediate(x) { return False }
 	switch _ := (*x).(type) {
-	case Procedure:
+	case *Procedure:
 		return True
 	}
 	return False
 }
 
-func apprim(proc Procedure, args []Obj, ct Obj) Obj {
+func apprim(proc *Procedure, args []Obj, ct Obj) Obj {
 	// XXX: should also check if there's a maximum number of
 	// arguments, like e.g. make-string
 	if len(args) < proc.required {
@@ -73,7 +78,7 @@ func lookup(name Obj, lexenv map[string]Obj) Obj {
 	panic(fmt.Sprintf("unbound variable: %s",sname))
 }
 
-func lambda_apply(proc Procedure, args []Obj, ct Obj) Obj {
+func lambda_apply(proc *Procedure, args []Obj, ct Obj) Obj {
 	// Extend newenv using formals + args
 	newenv := make(map[string]Obj)
 	for k,v := range proc.lexenv { newenv[k] = v }
@@ -205,7 +210,7 @@ func ev(origcode Obj, tailpos bool, lexenv map[string]Obj, ct Obj) Obj {
 		return car(cdr(code))
 
 	case "$ann-lambda":
-		var closure Procedure
+		var closure *Procedure = new(Procedure)
 		code = cdr(code); closure.formals = car(code)
 		code = cdr(code); name := car(code)
 		code = cdr(code); // freevars = car(code)
@@ -237,7 +242,7 @@ func ap(oproc Obj, args []Obj, ct Obj) Obj {
 	if is_immediate(oproc) {
 		panic(fmt.Sprintf("bad type to apply: %v",oproc))
 	}
-	proc := (*oproc).(Procedure)
+	proc := (*oproc).(*Procedure)
 	return proc.apply(proc, args, ct)
 }
 

@@ -132,7 +132,7 @@ func thread_start_ex(thread Obj) Obj {
 		defer func() {
 			if err := recover(); err != nil {
 				for e := t.links.Front(); e != nil; e = e.Next() {
-					send((e.Value).(Obj), vector(intern("died"),thread))
+					send((e.Value).(Obj), _vector(intern("died"),thread))
 				}
 				return
 			}

@@ -50,17 +50,21 @@
 
 ;; IIII INNN NNNN NNNN NNNN NNrr rrrr rrrr
 (define (op2 i n r)
-  (if (> n #b1111111111111111111) (error 'op2 "n too large" i n r))
+  (if (> n #b11111111111111111) (error 'op2 "n too large" i n r))
   (if (> r #b1111111111) (error 'op2 "r too large" i n r))
   (bitwise-ior (bitwise-arithmetic-shift-left i 27)
-               (bitwise-arithmetic-shift-left
-                (bitwise-arithmetic-shift-right n 2)
-                10)
+               (bitwise-arithmetic-shift-left (bitwise-and n #b11111111111111111) 10)
                r))
 (define JUMP          #b00000)          ; label
 (define CONST-REF     #b01001)          ; reg n
 (define BF            #b01111)          ; reg label
 (define CLOSURE.LABEL #b10000)          ; reg label
+
+(define (op2-disp op)
+  (let ((x (bitwise-and #b11111111111111111 (bitwise-arithmetic-shift-right op 10))))
+    (if (<= x (- (bitwise-arithmetic-shift 1 16) 1))
+        x
+        (- x (bitwise-arithmetic-shift 1 17)))))
 
 ;; IIII INNN NNNN NNnn nnnn nnrr rrrr rrrr
 (define (op3 i n1 n2 r)
@@ -68,7 +72,7 @@
   (if (> n2 #xff) (error 'op3 "n2 too large" n2))
   (if (> r #b1111111111) (error 'op3 "r too large" i n1 n2 r))
   (bitwise-ior (bitwise-arithmetic-shift-left i 27)
-               (bitwise-arithmetic-shift-left n1 19)
+               (bitwise-arithmetic-shift-left n1 18)
                (bitwise-arithmetic-shift-left n2 10)
                r))
 (define PRIMCALL      #b10001)          ; reg name n
@@ -78,7 +82,7 @@
 ;; https://github.com/weinholt/conscheme/wiki/Bytecode-instructions
 
 (define (cg-reg-gen start)
-  (let ((r 0))
+  (let ((r start))
     (lambda ()
       (let ((ret r))
         (set! r (+ r 1))
@@ -102,10 +106,10 @@
                              (if old
                                  (cdr old)
                                  (let ((idx i))
-                                   #;(print "#;const " i " = " (car x))
-                                   (set! consts (cons (cons (car x) i) consts))
+                                   ;; (print "#;const " idx " = " (car x))
+                                   (set! consts (cons (cons (car x) idx) consts))
                                    (set! i (+ idx 1))
-                                   i)))))))
+                                   idx)))))))
         (frame #f))
     (vector env reg label constpool frame)))
 
@@ -217,7 +221,8 @@
                              (body (cadddr code)))
                          (let lp ((formals formals)
                                   (env '())
-                                  (fi 0))
+                                  (fi 0)
+                                  (restargs? #f))
                            (cond ((null? formals)
                                   (let lp ((closure-vars closure-vars)
                                            (env env)
@@ -225,6 +230,8 @@
                                     (if (null? closure-vars)
                                         (let ((s* (cg-code-env s env fi)))
                                           (cg-frame-start emit s*)
+                                          (if restargs?
+                                              (emit (list 'consargs fi)))
                                           (let ((ret (codegen* body emit s* #t)))
                                             (emit (list 'return ret))
                                             (cg-frame-end s*)
@@ -239,14 +246,15 @@
                                       (cons (cons (car formals)
                                                   (cons 'local fi #;(list 'reg fi)))
                                             env)
-                                      (+ fi 1)))
+                                      (+ fi 1)
+                                      restargs?))
                                  (else
-                                  (emit (list 'consargs fi))
                                   (lp '()
                                       (cons (cons formals
                                                   (cons 'local fi #;(list 'reg fi)))
                                             env)
-                                      (+ fi 1))))))))
+                                      (+ fi 1)
+                                      #t)))))))
                    (cadr x)))
         (($closure)
          (let ((r (cg-reg s))
@@ -329,31 +337,25 @@
         (else
          (error 'codegen* "Bad expression" x)))))
 
-(define (primitive-number name)
-  (case name
-    ((cons) 0)
-    (else
-     (display "#;unknown #;primitive ")
-     (display name)
-     (newline)
-     #xff)))
-
 (define (find-labels code)
+  ;; (display "assembler labels:\n")
   (let lp ((code code) (labels '()) (pc 0))
     (if (null? code)
         labels
         (case (caar code)
           ((label)
+           ;; (display #\tab) (display (car code)) (newline)
            (lp (cdr code) (cons (cons (cadar code) pc) labels) pc))
           (else
-           (lp (cdr code) labels (+ pc 4)))))))
+           ;; (display (number->string pc 16)) (display #\tab) (display (car code)) (newline)
+           (lp (cdr code) labels (+ pc 1)))))))
 
 (define (make-assembler port labels)
   ;; One-pass assembler. Forward references are patched by fix-op2.
   (let ((relocs '())
         (pc 0))
     (define (put i)
-      (set! pc (+ pc 4))
+      (set! pc (+ pc 1))
       (put-u8 port (bitwise-and #xff i))
       (put-u8 port (bitwise-and #xff (bitwise-arithmetic-shift-right i 8)))
       (put-u8 port (bitwise-and #xff (bitwise-arithmetic-shift-right i 16)))
@@ -391,7 +393,7 @@
         ((primcall)
          (put (op3 PRIMCALL (cadddr i) (primitive-number (caddr i)) (cadr i))))
         ((primref)
-         (put (op3 PRIMREF 0 (primitive-number (cadr i)) (cadr i))))
+         (put (op3 PRIMREF 0 (primitive-number (caddr i)) (cadr i))))
         ((label) #f)
         (else
          (error 'codegen "Internal error: bad instruction" i))))))
@@ -402,13 +404,17 @@
          (s (cg-new-state)))
     (codegen* x emit s #f)
     (set! code (reverse code))
-    ;;(pretty-print code)
+    ;; (pretty-print x)
+    ;; (pretty-print code)
     (let ((labels (find-labels code)))
+      ;; (display "LABELS: ")
+      ;; (display labels)
+      ;; (newline)
       (call-with-values
         open-bytevector-output-port
         (lambda (port extract)
           (for-each (make-assembler port labels) code)
-          (vector (extract) (cg-const-pool s)))))))
+          (vector (extract) (list->vector (cg-const-pool s))))))))
 
 #;
 (pretty-print

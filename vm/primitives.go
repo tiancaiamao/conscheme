@@ -4,104 +4,300 @@ package conscheme
 import "fmt"
 import "os"
 var primitives map[string]Obj = make(map[string]Obj)
+var primnums [97]Obj
 func init() {
-	primitives["current-thread"] = wrap(Procedure{name:"current-thread",required:0,apply:apprim})
-	primitives["$receive"] = wrap(Procedure{name:"$receive",required:1,apply:apprim})
-	primitives["send"] = wrap(Procedure{name:"send",required:2,apply:apprim})
-	primitives["thread-link!"] = wrap(Procedure{name:"thread-link!",required:2,apply:apprim})
-	primitives["thread-start!"] = wrap(Procedure{name:"thread-start!",required:1,apply:apprim})
-	primitives["thread-yield!"] = wrap(Procedure{name:"thread-yield!",required:0,apply:apprim})
-	primitives["thread-specific-set!"] = wrap(Procedure{name:"thread-specific-set!",required:2,apply:apprim})
-	primitives["thread-specific"] = wrap(Procedure{name:"thread-specific",required:1,apply:apprim})
-	primitives["thread-name"] = wrap(Procedure{name:"thread-name",required:1,apply:apprim})
-	primitives["thread?"] = wrap(Procedure{name:"thread?",required:1,apply:apprim})
-	primitives["$make-thread"] = wrap(Procedure{name:"$make-thread",required:2,apply:apprim})
-	primitives["$write"] = wrap(Procedure{name:"$write",required:2,apply:apprim})
-	primitives["$display"] = wrap(Procedure{name:"$display",required:2,apply:apprim})
-	primitives["lookahead-u8"] = wrap(Procedure{name:"lookahead-u8",required:1,apply:apprim})
-	primitives["put-bytevector"] = wrap(Procedure{name:"put-bytevector",required:2,apply:apprim})
-	primitives["put-u8"] = wrap(Procedure{name:"put-u8",required:2,apply:apprim})
-	primitives["get-u8"] = wrap(Procedure{name:"get-u8",required:1,apply:apprim})
-	primitives["$write-char"] = wrap(Procedure{name:"$write-char",required:2,apply:apprim})
-	primitives["$peek-char"] = wrap(Procedure{name:"$peek-char",required:1,apply:apprim})
-	primitives["$read-char"] = wrap(Procedure{name:"$read-char",required:1,apply:apprim})
-	primitives["close-port"] = wrap(Procedure{name:"close-port",required:1,apply:apprim})
-	primitives["close-output-port"] = wrap(Procedure{name:"close-output-port",required:1,apply:apprim})
-	primitives["close-input-port"] = wrap(Procedure{name:"close-input-port",required:1,apply:apprim})
-	primitives["open-file-output-port"] = wrap(Procedure{name:"open-file-output-port",required:1,apply:apprim})
-	primitives["open-input-file"] = wrap(Procedure{name:"open-input-file",required:1,apply:apprim})
-	primitives["delete-file"] = wrap(Procedure{name:"delete-file",required:1,apply:apprim})
-	primitives["file-exists?"] = wrap(Procedure{name:"file-exists?",required:1,apply:apprim})
-	primitives["current-output-port"] = wrap(Procedure{name:"current-output-port",required:0,apply:apprim})
-	primitives["current-input-port"] = wrap(Procedure{name:"current-input-port",required:0,apply:apprim})
-	primitives["output-port?"] = wrap(Procedure{name:"output-port?",required:1,apply:apprim})
-	primitives["input-port?"] = wrap(Procedure{name:"input-port?",required:1,apply:apprim})
-	primitives["port?"] = wrap(Procedure{name:"port?",required:1,apply:apprim})
-	primitives["$bytevector-output-port-extract"] = wrap(Procedure{name:"$bytevector-output-port-extract",required:1,apply:apprim})
-	primitives["$open-bytevector-output-port"] = wrap(Procedure{name:"$open-bytevector-output-port",required:0,apply:apprim})
-	primitives["string->utf8"] = wrap(Procedure{name:"string->utf8",required:1,apply:apprim})
-	primitives["u8-list->bytevector"] = wrap(Procedure{name:"u8-list->bytevector",required:1,apply:apprim})
-	primitives["bytevector-length"] = wrap(Procedure{name:"bytevector-length",required:1,apply:apprim})
-	primitives["bytevector?"] = wrap(Procedure{name:"bytevector?",required:1,apply:apprim})
-	primitives["$global-set!"] = wrap(Procedure{name:"$global-set!",required:2,apply:apprim})
-	primitives["$global-ref"] = wrap(Procedure{name:"$global-ref",required:1,apply:apprim})
-	primitives["$cell-set!"] = wrap(Procedure{name:"$cell-set!",required:2,apply:apprim})
-	primitives["$cell-ref"] = wrap(Procedure{name:"$cell-ref",required:1,apply:apprim})
-	primitives["$make-cell"] = wrap(Procedure{name:"$make-cell",required:1,apply:apprim})
-	primitives["$eval"] = wrap(Procedure{name:"$eval",required:1,apply:apprim})
-	primitives["command-line"] = wrap(Procedure{name:"command-line",required:0,apply:apprim})
-	primitives["exit"] = wrap(Procedure{name:"exit",required:1,apply:apprim})
-	primitives["eq?"] = wrap(Procedure{name:"eq?",required:2,apply:apprim})
-	primitives["eof-object"] = wrap(Procedure{name:"eof-object",required:0,apply:apprim})
-	primitives["unspecified"] = wrap(Procedure{name:"unspecified",required:0,apply:apprim})
-	primitives["procedure?"] = wrap(Procedure{name:"procedure?",required:1,apply:apprim})
-	primitives["apply"] = wrap(Procedure{name:"apply",required:1,apply:apprim})
-	primitives["make-string"] = wrap(Procedure{name:"make-string",required:1,apply:apprim})
-	primitives["string-set!"] = wrap(Procedure{name:"string-set!",required:3,apply:apprim})
-	primitives["string-ref"] = wrap(Procedure{name:"string-ref",required:2,apply:apprim})
-	primitives["string-length"] = wrap(Procedure{name:"string-length",required:1,apply:apprim})
-	primitives["string?"] = wrap(Procedure{name:"string?",required:1,apply:apprim})
-	primitives["greatest-fixnum"] = wrap(Procedure{name:"greatest-fixnum",required:0,apply:apprim})
-	primitives["least-fixnum"] = wrap(Procedure{name:"least-fixnum",required:0,apply:apprim})
-	primitives["bitwise-arithmetic-shift-right"] = wrap(Procedure{name:"bitwise-arithmetic-shift-right",required:2,apply:apprim})
-	primitives["$bitwise-and"] = wrap(Procedure{name:"$bitwise-and",required:2,apply:apprim})
-	primitives["$bitwise-ior"] = wrap(Procedure{name:"$bitwise-ior",required:2,apply:apprim})
-	primitives["denominator"] = wrap(Procedure{name:"denominator",required:1,apply:apprim})
-	primitives["$cmp"] = wrap(Procedure{name:"$cmp",required:2,apply:apprim})
-	primitives["$-"] = wrap(Procedure{name:"$-",required:2,apply:apprim})
-	primitives["$*"] = wrap(Procedure{name:"$*",required:2,apply:apprim})
-	primitives["$/"] = wrap(Procedure{name:"$/",required:2,apply:apprim})
-	primitives["$+"] = wrap(Procedure{name:"$+",required:2,apply:apprim})
-	primitives["$string->number"] = wrap(Procedure{name:"$string->number",required:2,apply:apprim})
-	primitives["$number->string"] = wrap(Procedure{name:"$number->string",required:2,apply:apprim})
-	primitives["integer?"] = wrap(Procedure{name:"integer?",required:1,apply:apprim})
-	primitives["number?"] = wrap(Procedure{name:"number?",required:1,apply:apprim})
-	primitives["vector"] = wrap(Procedure{name:"vector",required:0,apply:apprim})
-	primitives["vector-set!"] = wrap(Procedure{name:"vector-set!",required:3,apply:apprim})
-	primitives["vector-ref"] = wrap(Procedure{name:"vector-ref",required:2,apply:apprim})
-	primitives["vector-length"] = wrap(Procedure{name:"vector-length",required:1,apply:apprim})
-	primitives["make-vector"] = wrap(Procedure{name:"make-vector",required:2,apply:apprim})
-	primitives["vector?"] = wrap(Procedure{name:"vector?",required:1,apply:apprim})
-	primitives["char-downcase"] = wrap(Procedure{name:"char-downcase",required:1,apply:apprim})
-	primitives["char-upcase"] = wrap(Procedure{name:"char-upcase",required:1,apply:apprim})
-	primitives["char-whitespace?"] = wrap(Procedure{name:"char-whitespace?",required:1,apply:apprim})
-	primitives["integer->char"] = wrap(Procedure{name:"integer->char",required:1,apply:apprim})
-	primitives["char->integer"] = wrap(Procedure{name:"char->integer",required:1,apply:apprim})
-	primitives["char?"] = wrap(Procedure{name:"char?",required:1,apply:apprim})
-	primitives["string->symbol"] = wrap(Procedure{name:"string->symbol",required:1,apply:apprim})
-	primitives["symbol->string"] = wrap(Procedure{name:"symbol->string",required:1,apply:apprim})
-	primitives["symbol?"] = wrap(Procedure{name:"symbol?",required:1,apply:apprim})
-	primitives["null?"] = wrap(Procedure{name:"null?",required:1,apply:apprim})
-	primitives["set-cdr!"] = wrap(Procedure{name:"set-cdr!",required:2,apply:apprim})
-	primitives["set-car!"] = wrap(Procedure{name:"set-car!",required:2,apply:apprim})
-	primitives["length"] = wrap(Procedure{name:"length",required:1,apply:apprim})
-	primitives["floyd"] = wrap(Procedure{name:"floyd",required:1,apply:apprim})
-	primitives["cdr"] = wrap(Procedure{name:"cdr",required:1,apply:apprim})
-	primitives["car"] = wrap(Procedure{name:"car",required:1,apply:apprim})
-	primitives["cons"] = wrap(Procedure{name:"cons",required:2,apply:apprim})
-	primitives["pair?"] = wrap(Procedure{name:"pair?",required:1,apply:apprim})
-	primitives["not"] = wrap(Procedure{name:"not",required:1,apply:apprim})
-	primitives["boolean?"] = wrap(Procedure{name:"boolean?",required:1,apply:apprim})
+	var prim Obj
+	prim = wrap(&Procedure{name:"current-thread",required:0,apply:apprim})
+	primitives["current-thread"] = prim
+	primnums[96] = prim
+	prim = wrap(&Procedure{name:"$receive",required:1,apply:apprim})
+	primitives["$receive"] = prim
+	primnums[95] = prim
+	prim = wrap(&Procedure{name:"send",required:2,apply:apprim})
+	primitives["send"] = prim
+	primnums[94] = prim
+	prim = wrap(&Procedure{name:"thread-link!",required:2,apply:apprim})
+	primitives["thread-link!"] = prim
+	primnums[93] = prim
+	prim = wrap(&Procedure{name:"thread-start!",required:1,apply:apprim})
+	primitives["thread-start!"] = prim
+	primnums[92] = prim
+	prim = wrap(&Procedure{name:"thread-yield!",required:0,apply:apprim})
+	primitives["thread-yield!"] = prim
+	primnums[91] = prim
+	prim = wrap(&Procedure{name:"thread-specific-set!",required:2,apply:apprim})
+	primitives["thread-specific-set!"] = prim
+	primnums[90] = prim
+	prim = wrap(&Procedure{name:"thread-specific",required:1,apply:apprim})
+	primitives["thread-specific"] = prim
+	primnums[89] = prim
+	prim = wrap(&Procedure{name:"thread-name",required:1,apply:apprim})
+	primitives["thread-name"] = prim
+	primnums[88] = prim
+	prim = wrap(&Procedure{name:"thread?",required:1,apply:apprim})
+	primitives["thread?"] = prim
+	primnums[87] = prim
+	prim = wrap(&Procedure{name:"$make-thread",required:2,apply:apprim})
+	primitives["$make-thread"] = prim
+	primnums[86] = prim
+	prim = wrap(&Procedure{name:"$write",required:2,apply:apprim})
+	primitives["$write"] = prim
+	primnums[85] = prim
+	prim = wrap(&Procedure{name:"$display",required:2,apply:apprim})
+	primitives["$display"] = prim
+	primnums[84] = prim
+	prim = wrap(&Procedure{name:"lookahead-u8",required:1,apply:apprim})
+	primitives["lookahead-u8"] = prim
+	primnums[83] = prim
+	prim = wrap(&Procedure{name:"put-bytevector",required:2,apply:apprim})
+	primitives["put-bytevector"] = prim
+	primnums[82] = prim
+	prim = wrap(&Procedure{name:"put-u8",required:2,apply:apprim})
+	primitives["put-u8"] = prim
+	primnums[81] = prim
+	prim = wrap(&Procedure{name:"get-u8",required:1,apply:apprim})
+	primitives["get-u8"] = prim
+	primnums[80] = prim
+	prim = wrap(&Procedure{name:"$write-char",required:2,apply:apprim})
+	primitives["$write-char"] = prim
+	primnums[79] = prim
+	prim = wrap(&Procedure{name:"$peek-char",required:1,apply:apprim})
+	primitives["$peek-char"] = prim
+	primnums[78] = prim
+	prim = wrap(&Procedure{name:"$read-char",required:1,apply:apprim})
+	primitives["$read-char"] = prim
+	primnums[77] = prim
+	prim = wrap(&Procedure{name:"close-port",required:1,apply:apprim})
+	primitives["close-port"] = prim
+	primnums[76] = prim
+	prim = wrap(&Procedure{name:"close-output-port",required:1,apply:apprim})
+	primitives["close-output-port"] = prim
+	primnums[75] = prim
+	prim = wrap(&Procedure{name:"close-input-port",required:1,apply:apprim})
+	primitives["close-input-port"] = prim
+	primnums[74] = prim
+	prim = wrap(&Procedure{name:"open-file-output-port",required:1,apply:apprim})
+	primitives["open-file-output-port"] = prim
+	primnums[73] = prim
+	prim = wrap(&Procedure{name:"open-input-file",required:1,apply:apprim})
+	primitives["open-input-file"] = prim
+	primnums[72] = prim
+	prim = wrap(&Procedure{name:"delete-file",required:1,apply:apprim})
+	primitives["delete-file"] = prim
+	primnums[71] = prim
+	prim = wrap(&Procedure{name:"file-exists?",required:1,apply:apprim})
+	primitives["file-exists?"] = prim
+	primnums[70] = prim
+	prim = wrap(&Procedure{name:"current-output-port",required:0,apply:apprim})
+	primitives["current-output-port"] = prim
+	primnums[69] = prim
+	prim = wrap(&Procedure{name:"current-input-port",required:0,apply:apprim})
+	primitives["current-input-port"] = prim
+	primnums[68] = prim
+	prim = wrap(&Procedure{name:"output-port?",required:1,apply:apprim})
+	primitives["output-port?"] = prim
+	primnums[67] = prim
+	prim = wrap(&Procedure{name:"input-port?",required:1,apply:apprim})
+	primitives["input-port?"] = prim
+	primnums[66] = prim
+	prim = wrap(&Procedure{name:"port?",required:1,apply:apprim})
+	primitives["port?"] = prim
+	primnums[65] = prim
+	prim = wrap(&Procedure{name:"$bytevector-output-port-extract",required:1,apply:apprim})
+	primitives["$bytevector-output-port-extract"] = prim
+	primnums[64] = prim
+	prim = wrap(&Procedure{name:"$open-bytevector-output-port",required:0,apply:apprim})
+	primitives["$open-bytevector-output-port"] = prim
+	primnums[63] = prim
+	prim = wrap(&Procedure{name:"string->utf8",required:1,apply:apprim})
+	primitives["string->utf8"] = prim
+	primnums[62] = prim
+	prim = wrap(&Procedure{name:"u8-list->bytevector",required:1,apply:apprim})
+	primitives["u8-list->bytevector"] = prim
+	primnums[61] = prim
+	prim = wrap(&Procedure{name:"bytevector-length",required:1,apply:apprim})
+	primitives["bytevector-length"] = prim
+	primnums[60] = prim
+	prim = wrap(&Procedure{name:"bytevector?",required:1,apply:apprim})
+	primitives["bytevector?"] = prim
+	primnums[59] = prim
+	prim = wrap(&Procedure{name:"$global-set!",required:2,apply:apprim})
+	primitives["$global-set!"] = prim
+	primnums[58] = prim
+	prim = wrap(&Procedure{name:"$global-ref",required:1,apply:apprim})
+	primitives["$global-ref"] = prim
+	primnums[57] = prim
+	prim = wrap(&Procedure{name:"$cell-set!",required:2,apply:apprim})
+	primitives["$cell-set!"] = prim
+	primnums[56] = prim
+	prim = wrap(&Procedure{name:"$cell-ref",required:1,apply:apprim})
+	primitives["$cell-ref"] = prim
+	primnums[55] = prim
+	prim = wrap(&Procedure{name:"$make-cell",required:1,apply:apprim})
+	primitives["$make-cell"] = prim
+	primnums[54] = prim
+	prim = wrap(&Procedure{name:"$eval",required:1,apply:apprim})
+	primitives["$eval"] = prim
+	primnums[53] = prim
+	prim = wrap(&Procedure{name:"command-line",required:0,apply:apprim})
+	primitives["command-line"] = prim
+	primnums[52] = prim
+	prim = wrap(&Procedure{name:"exit",required:1,apply:apprim})
+	primitives["exit"] = prim
+	primnums[51] = prim
+	prim = wrap(&Procedure{name:"eq?",required:2,apply:apprim})
+	primitives["eq?"] = prim
+	primnums[50] = prim
+	prim = wrap(&Procedure{name:"eof-object",required:0,apply:apprim})
+	primitives["eof-object"] = prim
+	primnums[49] = prim
+	prim = wrap(&Procedure{name:"unspecified",required:0,apply:apprim})
+	primitives["unspecified"] = prim
+	primnums[48] = prim
+	prim = wrap(&Procedure{name:"procedure?",required:1,apply:apprim})
+	primitives["procedure?"] = prim
+	primnums[47] = prim
+	prim = wrap(&Procedure{name:"apply",required:1,apply:apprim})
+	primitives["apply"] = prim
+	primnums[46] = prim
+	prim = wrap(&Procedure{name:"make-string",required:1,apply:apprim})
+	primitives["make-string"] = prim
+	primnums[45] = prim
+	prim = wrap(&Procedure{name:"string-set!",required:3,apply:apprim})
+	primitives["string-set!"] = prim
+	primnums[44] = prim
+	prim = wrap(&Procedure{name:"string-ref",required:2,apply:apprim})
+	primitives["string-ref"] = prim
+	primnums[43] = prim
+	prim = wrap(&Procedure{name:"string-length",required:1,apply:apprim})
+	primitives["string-length"] = prim
+	primnums[42] = prim
+	prim = wrap(&Procedure{name:"string?",required:1,apply:apprim})
+	primitives["string?"] = prim
+	primnums[41] = prim
+	prim = wrap(&Procedure{name:"greatest-fixnum",required:0,apply:apprim})
+	primitives["greatest-fixnum"] = prim
+	primnums[40] = prim
+	prim = wrap(&Procedure{name:"least-fixnum",required:0,apply:apprim})
+	primitives["least-fixnum"] = prim
+	primnums[39] = prim
+	prim = wrap(&Procedure{name:"bitwise-arithmetic-shift-right",required:2,apply:apprim})
+	primitives["bitwise-arithmetic-shift-right"] = prim
+	primnums[38] = prim
+	prim = wrap(&Procedure{name:"$bitwise-and",required:2,apply:apprim})
+	primitives["$bitwise-and"] = prim
+	primnums[37] = prim
+	prim = wrap(&Procedure{name:"$bitwise-ior",required:2,apply:apprim})
+	primitives["$bitwise-ior"] = prim
+	primnums[36] = prim
+	prim = wrap(&Procedure{name:"denominator",required:1,apply:apprim})
+	primitives["denominator"] = prim
+	primnums[35] = prim
+	prim = wrap(&Procedure{name:"$cmp",required:2,apply:apprim})
+	primitives["$cmp"] = prim
+	primnums[34] = prim
+	prim = wrap(&Procedure{name:"$-",required:2,apply:apprim})
+	primitives["$-"] = prim
+	primnums[33] = prim
+	prim = wrap(&Procedure{name:"$*",required:2,apply:apprim})
+	primitives["$*"] = prim
+	primnums[32] = prim
+	prim = wrap(&Procedure{name:"$/",required:2,apply:apprim})
+	primitives["$/"] = prim
+	primnums[31] = prim
+	prim = wrap(&Procedure{name:"$+",required:2,apply:apprim})
+	primitives["$+"] = prim
+	primnums[30] = prim
+	prim = wrap(&Procedure{name:"$string->number",required:2,apply:apprim})
+	primitives["$string->number"] = prim
+	primnums[29] = prim
+	prim = wrap(&Procedure{name:"$number->string",required:2,apply:apprim})
+	primitives["$number->string"] = prim
+	primnums[28] = prim
+	prim = wrap(&Procedure{name:"integer?",required:1,apply:apprim})
+	primitives["integer?"] = prim
+	primnums[27] = prim
+	prim = wrap(&Procedure{name:"number?",required:1,apply:apprim})
+	primitives["number?"] = prim
+	primnums[26] = prim
+	prim = wrap(&Procedure{name:"vector",required:0,apply:apprim})
+	primitives["vector"] = prim
+	primnums[25] = prim
+	prim = wrap(&Procedure{name:"vector-set!",required:3,apply:apprim})
+	primitives["vector-set!"] = prim
+	primnums[24] = prim
+	prim = wrap(&Procedure{name:"vector-ref",required:2,apply:apprim})
+	primitives["vector-ref"] = prim
+	primnums[23] = prim
+	prim = wrap(&Procedure{name:"vector-length",required:1,apply:apprim})
+	primitives["vector-length"] = prim
+	primnums[22] = prim
+	prim = wrap(&Procedure{name:"make-vector",required:2,apply:apprim})
+	primitives["make-vector"] = prim
+	primnums[21] = prim
+	prim = wrap(&Procedure{name:"vector?",required:1,apply:apprim})
+	primitives["vector?"] = prim
+	primnums[20] = prim
+	prim = wrap(&Procedure{name:"char-downcase",required:1,apply:apprim})
+	primitives["char-downcase"] = prim
+	primnums[19] = prim
+	prim = wrap(&Procedure{name:"char-upcase",required:1,apply:apprim})
+	primitives["char-upcase"] = prim
+	primnums[18] = prim
+	prim = wrap(&Procedure{name:"char-whitespace?",required:1,apply:apprim})
+	primitives["char-whitespace?"] = prim
+	primnums[17] = prim
+	prim = wrap(&Procedure{name:"integer->char",required:1,apply:apprim})
+	primitives["integer->char"] = prim
+	primnums[16] = prim
+	prim = wrap(&Procedure{name:"char->integer",required:1,apply:apprim})
+	primitives["char->integer"] = prim
+	primnums[15] = prim
+	prim = wrap(&Procedure{name:"char?",required:1,apply:apprim})
+	primitives["char?"] = prim
+	primnums[14] = prim
+	prim = wrap(&Procedure{name:"string->symbol",required:1,apply:apprim})
+	primitives["string->symbol"] = prim
+	primnums[13] = prim
+	prim = wrap(&Procedure{name:"symbol->string",required:1,apply:apprim})
+	primitives["symbol->string"] = prim
+	primnums[12] = prim
+	prim = wrap(&Procedure{name:"symbol?",required:1,apply:apprim})
+	primitives["symbol?"] = prim
+	primnums[11] = prim
+	prim = wrap(&Procedure{name:"null?",required:1,apply:apprim})
+	primitives["null?"] = prim
+	primnums[10] = prim
+	prim = wrap(&Procedure{name:"set-cdr!",required:2,apply:apprim})
+	primitives["set-cdr!"] = prim
+	primnums[9] = prim
+	prim = wrap(&Procedure{name:"set-car!",required:2,apply:apprim})
+	primitives["set-car!"] = prim
+	primnums[8] = prim
+	prim = wrap(&Procedure{name:"length",required:1,apply:apprim})
+	primitives["length"] = prim
+	primnums[7] = prim
+	prim = wrap(&Procedure{name:"floyd",required:1,apply:apprim})
+	primitives["floyd"] = prim
+	primnums[6] = prim
+	prim = wrap(&Procedure{name:"cdr",required:1,apply:apprim})
+	primitives["cdr"] = prim
+	primnums[5] = prim
+	prim = wrap(&Procedure{name:"car",required:1,apply:apprim})
+	primitives["car"] = prim
+	primnums[4] = prim
+	prim = wrap(&Procedure{name:"cons",required:2,apply:apprim})
+	primitives["cons"] = prim
+	primnums[3] = prim
+	prim = wrap(&Procedure{name:"pair?",required:1,apply:apprim})
+	primitives["pair?"] = prim
+	primnums[2] = prim
+	prim = wrap(&Procedure{name:"not",required:1,apply:apprim})
+	primitives["not"] = prim
+	primnums[1] = prim
+	prim = wrap(&Procedure{name:"boolean?",required:1,apply:apprim})
+	primitives["boolean?"] = prim
+	primnums[0] = prim
 }
 
 func evprim(primop string, args []Obj, ct Obj) Obj {
@@ -333,3 +529,234 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 	}
 	panic(fmt.Sprintf("Fell off the edge in evprim(): %s",primop))
 }
+
+func evprimn(primop uint32, args []Obj, ct Obj) Obj {
+	switch primop {
+	case 96:
+		return ct
+	case 95:
+		return _receive(args[0])
+	case 94:
+		return send(args[0], args[1])
+	case 93:
+		return thread_link_ex(args[0], args[1])
+	case 92:
+		return thread_start_ex(args[0])
+	case 91:
+		return thread_yield_ex()
+	case 90:
+		return thread_specific_set_ex(args[0], args[1])
+	case 89:
+		return thread_specific(args[0])
+	case 88:
+		return thread_name(args[0])
+	case 87:
+		return thread_p(args[0])
+	case 86:
+		return _make_thread(args[0], args[1])
+	case 85:
+		return write(args[0], args[1])
+	case 84:
+		return display(args[0], args[1])
+	case 83:
+		return lookahead_u8(args[0])
+	case 82:
+		return put_bytevector(args[0], args[1])
+	case 81:
+		return put_u8(args[0], args[1])
+	case 80:
+		return get_u8(args[0])
+	case 79:
+		return _write_char(args[0], args[1])
+	case 78:
+		return _peek_char(args[0])
+	case 77:
+		return _read_char(args[0])
+	case 76:
+		return close_port(args[0])
+	case 75:
+		return close_output_port(args[0])
+	case 74:
+		return close_input_port(args[0])
+	case 73:
+		return open_file_output_port(args[0])
+	case 72:
+		return open_input_file(args[0])
+	case 71:
+		return delete_file(args[0])
+	case 70:
+		return file_exists_p(args[0])
+	case 69:
+		return current_output_port()
+	case 68:
+		return current_input_port()
+	case 67:
+		return output_port_p(args[0])
+	case 66:
+		return input_port_p(args[0])
+	case 65:
+		return port_p(args[0])
+	case 64:
+		return _bytevector_output_port_extract(args[0])
+	case 63:
+		return _open_bytevector_output_port()
+	case 62:
+		return string_to_utf8(args[0])
+	case 61:
+		return u8_list_to_bytevector(args[0])
+	case 60:
+		return bytevector_length(args[0])
+	case 59:
+		return bytevector_p(args[0])
+	case 58:
+		name := args[0]
+		value := args[1]
+		sname := (*name).(string)
+		env[sname] = value
+		return Void
+	case 57:
+		name := args[0]
+		sname := (*name).(string)
+		v, def := env[sname]
+		if !def { panic(fmt.Sprintf("undefined top-level variable: %s",sname)) }
+		return v
+	case 56:
+		v := args[0]
+		vv := (*v).(*[1]Obj)
+		vv[0] = args[1]
+		return Void
+	case 55:
+		v := args[0]
+		vv := (*v).(*[1]Obj)
+		return vv[0]
+	case 54:
+		var v [1]Obj
+		v[0] = args[0]
+		var vv interface{} = &v
+		return Obj(&vv)
+	case 53:
+		return Eval(args[0])
+	case 52:
+		return Command_line()
+	case 51:
+		os.Exit(number_to_int(args[0]))
+	case 50:
+		if args[0] == args[1] {
+			return True
+		} else {
+			return False
+		}
+	case 49:
+		return Eof
+	case 48:
+		return Void
+	case 47:
+		return procedure_p(args[0])
+	case 46:
+		return apply(args,ct)
+	case 45:
+		switch len(args) {
+		default: return Make_string(args[0],args[1])
+		case 1: return Make_string(args[0],Make_char(32))
+		}
+	case 44:
+		return String_set_ex(args[0], args[1], args[2])
+	case 43:
+		return String_ref(args[0], args[1])
+	case 42:
+		return String_length(args[0])
+	case 41:
+		return string_p(args[0])
+	case 40:
+		return Make_fixnum(fixnum_max)
+	case 39:
+		return Make_fixnum(fixnum_min)
+	case 38:
+		return bitwise_arithmetic_shift_right(args[0], args[1])
+	case 37:
+		return bitwise_and(args[0], args[1])
+	case 36:
+		return bitwise_ior(args[0], args[1])
+	case 35:
+		return denominator(args[0])
+	case 34:
+		return number_cmp(args[0], args[1])
+	case 33:
+		return number_subtract(args[0], args[1])
+	case 32:
+		return number_multiply(args[0], args[1])
+	case 31:
+		return number_divide(args[0], args[1])
+	case 30:
+		return number_add(args[0], args[1])
+	case 29:
+		return _string_to_number(args[0], args[1])
+	case 28:
+		return _number_to_string(args[0], args[1])
+	case 27:
+		return integer_p(args[0])
+	case 26:
+		return number_p(args[0])
+	case 25:
+		return wrap(args)
+	case 24:
+		return Vector_set_ex(args[0], args[1], args[2])
+	case 23:
+		return Vector_ref(args[0], args[1])
+	case 22:
+		return vector_length(args[0])
+	case 21:
+		return Make_vector(args[0], args[1])
+	case 20:
+		return vector_p(args[0])
+	case 19:
+		return char_downcase(args[0])
+	case 18:
+		return char_upcase(args[0])
+	case 17:
+		return char_whitespace_p(args[0])
+	case 16:
+		return integer_to_char(args[0])
+	case 15:
+		return char_to_integer(args[0])
+	case 14:
+		return char_p(args[0])
+	case 13:
+		return String_to_symbol(args[0])
+	case 12:
+		return Symbol_to_string(args[0])
+	case 11:
+		return symbol_p(args[0])
+	case 10:
+		if args[0] ==  Eol {
+			return True
+		} else {
+			return False
+		}
+	case 9:
+		return set_cdr_ex(args[0], args[1])
+	case 8:
+		return set_car_ex(args[0], args[1])
+	case 7:
+		return Length(args[0])
+	case 6:
+		return Floyd(args[0])
+	case 5:
+		return cdr(args[0])
+	case 4:
+		return car(args[0])
+	case 3:
+		return Cons(args[0], args[1])
+	case 2:
+		return pair_p(args[0])
+	case 1:
+		return not(args[0])
+	case 0:
+		return boolean_p(args[0])
+	default:
+		fmt.Fprintf(os.Stderr, "Please regenerate primitives.go\n")
+		panic(fmt.Sprintf("Unimplemented primitive: %s",primop))
+	}
+	panic(fmt.Sprintf("Fell off the edge in evprimn(): %s",primop))
+}
+

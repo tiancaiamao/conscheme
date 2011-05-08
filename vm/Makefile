@@ -8,5 +8,6 @@ GOFILES=arithmetic.go\
 	thread.go\
 	types.go\
 	primitives.go\
+	vm.go\
 
 include $(GOROOT)/src/Make.pkg

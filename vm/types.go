@@ -243,7 +243,7 @@ func vector_p(x Obj) Obj {
 	return False
 }
 
-func vector(v ...Obj) Obj {
+func _vector(v ...Obj) Obj {
 	var vi interface{} = v
 	return Obj(&vi)
 }
@@ -466,7 +466,7 @@ func Obj_display(x Obj, p io.Writer, write Obj) {
 	case x == Void:
 		fmt.Fprintf(p, "#<void>")
 	case procedure_p(x) != False:
-		proc := (*x).(Procedure)
+		proc := (*x).(*Procedure)
 		fmt.Fprintf(p, "#<procedure %s>",proc.name)
 	case port_p(x) != False:
 		display_port(p, x)

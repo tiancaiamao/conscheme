@@ -29,7 +29,8 @@ import (
 )
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "Usage: conscheme <cso file>\n")
+	// TODO: find the image automatically
+	fmt.Fprintf(os.Stderr, "Usage: conscheme <image>\n")
 	flag.PrintDefaults()
 	os.Exit(1)
 }
@@ -40,7 +41,7 @@ func main() {
 	if len(args) < 1 {
 		usage()
 	}
-	// For now we only run image files. Later we should start a REPL.
+	// Open, read and run the image file.
 	f, e := os.Open(args[0], os.O_RDONLY, 0666)
 	if e != nil {
 		fmt.Fprintf(os.Stderr, "Error opening image file: %v\n", e)
@@ -51,14 +52,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Not a conscheme image file: %v\n", e)
 		usage()
 	}
-	_ = d.ReadObject()
+	header := d.ReadObject()
 	code := d.ReadObject()
-	// header := d.ReadObject()
-	// code := d.ReadObject()
 	// Write(header)
 	// fmt.Print("\n")
-	// Write(code)
-	// fmt.Print("\n")
-	Eval(code)
-	//fmt.Print("\n")
+	Conscheme(header, code)
 }
