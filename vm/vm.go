@@ -160,6 +160,13 @@ func tail_frame(f *Frame, n int) {
 }
 
 func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Printf("Error in Scheme code: %v\n", err)
+			stack_trace(stack)
+			panic("no error recovery yet")
+		}
+	}()
 	pc := stack.savedpc
 
 	for {
