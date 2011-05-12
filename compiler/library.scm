@@ -372,9 +372,11 @@
   (if (null? l)
       (unspecified)
       (let lp ((l l))
-        (if (null? (cdr l))
-            (f (car l))
-            (lp (cdr l))))))
+        (cond ((null? (cdr l))
+               (f (car l)))
+              (else
+               (f (car l))
+               (lp (cdr l)))))))
 
 ;; call-with-current-continuation call/cc
 ;; dynamic-wind
