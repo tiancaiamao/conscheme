@@ -4,7 +4,7 @@ package conscheme
 import "fmt"
 import "os"
 var primitives map[string]Obj = make(map[string]Obj)
-var primnums [100]Obj
+var primnums [101]Obj
 func init() {
 	var prim Obj
 	prim = wrap(&Procedure{name:"stop-cpu-profile",required:0,apply:apprim})
@@ -190,6 +190,9 @@ func init() {
 	prim = wrap(&Procedure{name:"least-fixnum",required:0,apply:apprim})
 	primitives["least-fixnum"] = prim
 	primnums[39] = prim
+	prim = wrap(&Procedure{name:"bitwise-arithmetic-shift-left",required:2,apply:apprim})
+	primitives["bitwise-arithmetic-shift-left"] = prim
+	primnums[100] = prim
 	prim = wrap(&Procedure{name:"bitwise-arithmetic-shift-right",required:2,apply:apprim})
 	primitives["bitwise-arithmetic-shift-right"] = prim
 	primnums[38] = prim
@@ -456,6 +459,8 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 		return Make_fixnum(fixnum_max)
 	case "least-fixnum":
 		return Make_fixnum(fixnum_min)
+	case "bitwise-arithmetic-shift-left":
+		return bitwise_arithmetic_shift_left(args[0], args[1])
 	case "bitwise-arithmetic-shift-right":
 		return bitwise_arithmetic_shift_right(args[0], args[1])
 	case "$bitwise-and":
@@ -692,6 +697,8 @@ func evprimn(primop uint32, args []Obj, ct Obj) Obj {
 		return Make_fixnum(fixnum_max)
 	case 39:
 		return Make_fixnum(fixnum_min)
+	case 100:
+		return bitwise_arithmetic_shift_left(args[0], args[1])
 	case 38:
 		return bitwise_arithmetic_shift_right(args[0], args[1])
 	case 37:

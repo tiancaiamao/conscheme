@@ -537,6 +537,33 @@ func bitwise_arithmetic_shift_right(x,y Obj) Obj {
 	panic("bad type")
 }
 
+func bitwise_arithmetic_shift_left(x,y Obj) Obj {
+	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
+	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	if !yfx { panic("bad shift amount") }
+	amount := uint(uintptr(unsafe.Pointer(y)) >> fixnum_shift)
+	if xfx && amount < 32 - fixnum_shift {
+		i := int64(int(uintptr(unsafe.Pointer(x)) >> fixnum_shift))
+		r := i << amount
+		if r >= int64(fixnum_min) && r <= int64(fixnum_max) {
+			return Obj(unsafe.Pointer(uintptr((r << fixnum_shift) | fixnum_tag)))
+		} else {
+			return wrap(big.NewInt(r))
+		}
+	} else if xfx {
+		x = wrap(big.NewInt(int64(fixnum_to_int(x))))
+	} else if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
+		panic("bad type")
+	}
+
+	switch vx := (*x).(type) {
+	case *big.Int:
+		var z *big.Int = big.NewInt(0)
+		return wrap(z.Lsh(vx, amount))
+	}
+	panic("bad type")
+}
+
 
 func _number_to_string(num Obj, radix Obj) Obj {
 	var format string

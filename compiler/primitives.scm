@@ -242,6 +242,7 @@
 (define-call $bitwise-ior "bitwise_ior" 2)
 (define-call $bitwise-and "bitwise_and" 2)
 (define-call bitwise-arithmetic-shift-right "bitwise_arithmetic_shift_right" 2)
+(define-call bitwise-arithmetic-shift-left "bitwise_arithmetic_shift_left" 2)
 
 (define-operation least-fixnum (list "return Make_fixnum(fixnum_min)"))
 (define-primitive (least-fixnum))
