@@ -26,30 +26,66 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 )
+
+const imagename = "conscheme.image"
+var conschemedirs []string = []string{
+	"/usr/local/share",
+	"/usr/share",
+	// XXX: this might not be a good idea in the long run
+	"./compiler",
+	"."}
+const dirsep = "/"
+const pathsep = ":"
 
 func usage() {
 	// TODO: find the image automatically
-	fmt.Fprintf(os.Stderr, "Usage: conscheme <image>\n")
+	fmt.Fprintf(os.Stderr, "Usage: conscheme [OPTION]... [ARGUMENT]...\n")
 	flag.PrintDefaults()
 	os.Exit(1)
 }
 
-func main() {
-	flag.Parse()
-	args := flag.Args()
-	if len(args) < 1 {
-		usage()
-	}
-	// Open, read and run the image file.
-	f, e := os.OpenFile(args[0], os.O_RDONLY, 0666)
-	if e != nil {
-		fmt.Fprintf(os.Stderr, "Error opening image file: %v\n", e)
-		usage()
-	}
+func tryimage(fn string) (*Deserializer, os.Error) {
+	f, e := os.OpenFile(fn, os.O_RDONLY, 0666)
+	if e != nil { return nil, e }
 	d, e := NewReader(f)
-	if e != nil {
-		fmt.Fprintf(os.Stderr, "Not a conscheme image file: %v\n", e)
+	if e != nil { return nil, e }
+	return d, nil
+}
+
+func findimage() *Deserializer {
+	var boot *string = flag.String("boot", "", "conscheme boot image file")
+	flag.Parse()
+	os.Args = flag.Args()
+
+	if *boot != "" {
+		d, e := tryimage(*boot)
+		if e != nil {
+			fmt.Fprintf(os.Stderr, "Not a conscheme image file: %v\n", e)
+			usage()
+		}
+		return d
+	}
+
+	dirs := conschemedirs
+	search := os.Getenv("CONSCHEMEDIRS")
+	if search != "" {
+		dirs = strings.Split(search, pathsep, -1)
+	}
+
+	for i := range(dirs) {
+		d, e := tryimage(fmt.Sprintf("%s%s%s",dirs[i],dirsep,imagename))
+		if e == nil { return d }
+	}
+
+	return nil
+}
+
+func main() {
+	d := findimage()
+	if d == nil {
+		fmt.Fprintf(os.Stderr, "Can't find the conscheme.image file\n")
 		usage()
 	}
 	header := d.ReadObject()

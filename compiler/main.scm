@@ -175,7 +175,9 @@
     (print "THREAD 1")
     (thread-start! t)))
 
-(cond ((member "compile" (command-line))
+(cond ((null? (command-line))
+       (repl))
+      ((member "compile" (command-line))
        (compile))
       ((member "bytecode-compile" (command-line))
        (bytecode-compile))
@@ -184,9 +186,6 @@
       ((member "tests" (command-line))
        ;; TODO: move to a script
        (tests))
-      ((member "repl" (command-line))
-       ;; TODO: run this when there are no arguments
-       (repl))
       (else
-       (display "Usage: main [compile|bytecode-compile|genprim|repl].\n")
+       (display "Usage: main [compile|bytecode-compile|genprim].\n")
        (exit 1)))
