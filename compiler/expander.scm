@@ -211,7 +211,18 @@
     (else
      (error 'endianness "Syntax error" s))))
 
-;; TODO: do
+(define-macro (do vars test . body)
+  (let ((lp (gensym))
+        (vars-once (filter (lambda (x) (null? (cddr x))) vars))
+        (vars-up (filter (lambda (x) (pair? (cddr x))) vars)))
+    (list 'let vars-once
+          (list 'let lp (map (lambda (x) (list (car x) (cadr x)))
+                             vars-up)
+                (list 'cond test
+                      (cons 'else
+                            (append body
+                                    (list (cons lp (map caddr vars-up))))))))))
+
 ;; TODO: quasiquote
 
 (define (formals-to-list x)

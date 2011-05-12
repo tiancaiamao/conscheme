@@ -597,6 +597,15 @@
             (lp (append (reverse (apply f (car l) (map car ls))) acc)
                 (cdr l) (map cdr ls))))))
 
+(define (filter f l)
+  (let lp ((l l) (ls '()))
+    (cond ((null? l)
+           (reverse ls))
+          ((f (car l))
+           (lp (cdr l) (cons (car l) ls)))
+          (else
+           (lp (cdr l) ls)))))
+
 ;;; SRFI-18
 
 (define (make-thread thunk . rest)
