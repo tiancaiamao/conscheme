@@ -356,6 +356,7 @@
 (define-call file-exists? "file_exists_p" 1)
 (define-call delete-file "delete_file" 1)
 (define-call open-input-file "open_input_file" 1)
+(define-call open-output-file "open_output_file" 1)
 (define-call open-file-output-port "open_file_output_port" 1) ;TODO: three more arguments
 (define-call close-input-port "close_input_port" 1)
 (define-call close-output-port "close_output_port" 1)
@@ -389,6 +390,11 @@
 (define-operation current-thread
   (list (string-append "return " (ct))))
 (define-primitive (current-thread))
+
+;; Profiling
+
+(define-call start-cpu-profile "start_cpu_profile" 1)
+(define-call stop-cpu-profile "stop_cpu_profile" 0)
 
 ;;; A compiler pass
 

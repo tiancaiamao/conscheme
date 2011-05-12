@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/pprof"
 	"unicode"
 	"utf8"
 )
@@ -158,15 +159,22 @@ func delete_file(fn Obj) Obj {
 
 func open_input_file(fn Obj) Obj {
 	if is_immediate(fn) { panic("bad type") }
-	f, e := os.Open(string((*fn).([]int)), os.O_RDONLY, 0666)
+	f, e := os.OpenFile(string((*fn).([]int)), os.O_RDONLY, 0666)
 	if e != nil { panic(fmt.Sprintf("I/O error: %s", e)) }
 	return wrap(&InputPort{r: f, is_binary: false})
+}
+
+func open_output_file(fn Obj) Obj {
+	if is_immediate(fn) { panic("bad type") }
+	f, e := os.OpenFile(string((*fn).([]int)), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
+	if e != nil { panic(fmt.Sprintf("I/O error: %s", e)) }
+	return wrap(&OutputPort{w: f, is_binary: false})
 }
 
 func open_file_output_port(fn Obj) Obj {
 	// TODO: takes three more arguments
 	if is_immediate(fn) { panic("bad type") }
-	f, e := os.Open(string((*fn).([]int)), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
+	f, e := os.OpenFile(string((*fn).([]int)), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
 	if e != nil { panic(fmt.Sprintf("I/O error: %s", e)) }
 	return wrap(&OutputPort{w: f, is_binary: true})
 }
@@ -446,3 +454,15 @@ func Command_line() Obj {
 	return ret
 }
 
+func start_cpu_profile(p Obj) Obj {
+	if is_immediate(p) { panic("bad type") }
+	v := (*p).(*OutputPort)
+	pprof.StartCPUProfile(v.w)
+
+	return Void
+}
+
+func stop_cpu_profile() Obj {
+	pprof.StopCPUProfile()
+	return Void
+}

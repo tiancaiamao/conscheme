@@ -4,9 +4,15 @@ package conscheme
 import "fmt"
 import "os"
 var primitives map[string]Obj = make(map[string]Obj)
-var primnums [97]Obj
+var primnums [100]Obj
 func init() {
 	var prim Obj
+	prim = wrap(&Procedure{name:"stop-cpu-profile",required:0,apply:apprim})
+	primitives["stop-cpu-profile"] = prim
+	primnums[98] = prim
+	prim = wrap(&Procedure{name:"start-cpu-profile",required:1,apply:apprim})
+	primitives["start-cpu-profile"] = prim
+	primnums[97] = prim
 	prim = wrap(&Procedure{name:"current-thread",required:0,apply:apprim})
 	primitives["current-thread"] = prim
 	primnums[96] = prim
@@ -79,6 +85,9 @@ func init() {
 	prim = wrap(&Procedure{name:"open-file-output-port",required:1,apply:apprim})
 	primitives["open-file-output-port"] = prim
 	primnums[73] = prim
+	prim = wrap(&Procedure{name:"open-output-file",required:1,apply:apprim})
+	primitives["open-output-file"] = prim
+	primnums[99] = prim
 	prim = wrap(&Procedure{name:"open-input-file",required:1,apply:apprim})
 	primitives["open-input-file"] = prim
 	primnums[72] = prim
@@ -302,6 +311,10 @@ func init() {
 
 func evprim(primop string, args []Obj, ct Obj) Obj {
 	switch primop {
+	case "stop-cpu-profile":
+		return stop_cpu_profile()
+	case "start-cpu-profile":
+		return start_cpu_profile(args[0])
 	case "current-thread":
 		return ct
 	case "$receive":
@@ -350,6 +363,8 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 		return close_input_port(args[0])
 	case "open-file-output-port":
 		return open_file_output_port(args[0])
+	case "open-output-file":
+		return open_output_file(args[0])
 	case "open-input-file":
 		return open_input_file(args[0])
 	case "delete-file":
@@ -532,6 +547,10 @@ func evprim(primop string, args []Obj, ct Obj) Obj {
 
 func evprimn(primop uint32, args []Obj, ct Obj) Obj {
 	switch primop {
+	case 98:
+		return stop_cpu_profile()
+	case 97:
+		return start_cpu_profile(args[0])
 	case 96:
 		return ct
 	case 95:
@@ -580,6 +599,8 @@ func evprimn(primop uint32, args []Obj, ct Obj) Obj {
 		return close_input_port(args[0])
 	case 73:
 		return open_file_output_port(args[0])
+	case 99:
+		return open_output_file(args[0])
 	case 72:
 		return open_input_file(args[0])
 	case 71:

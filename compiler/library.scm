@@ -404,7 +404,6 @@
     output))
 
 ;; with-input-from-file with-output-to-file
-;; open-output-file
 
 (define (read-char . rest)
   (if (null? rest)
@@ -638,3 +637,12 @@
 (define (open-bytevector-output-port)
   (let ((p ($open-bytevector-output-port)))
     (values p (lambda () ($bytevector-output-port-extract p)))))
+
+(define (call-with-pprof-to-file fn f)
+  ;; XXX: not thread-safe
+  (let ((p (open-file-output-port fn)))
+    (start-cpu-profile p)
+    (let ((ret (f)))
+      (stop-cpu-profile)
+      (close-output-port p)
+      ret)))

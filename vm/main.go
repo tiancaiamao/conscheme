@@ -42,7 +42,7 @@ func main() {
 		usage()
 	}
 	// Open, read and run the image file.
-	f, e := os.Open(args[0], os.O_RDONLY, 0666)
+	f, e := os.OpenFile(args[0], os.O_RDONLY, 0666)
 	if e != nil {
 		fmt.Fprintf(os.Stderr, "Error opening image file: %v\n", e)
 		usage()
