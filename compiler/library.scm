@@ -369,9 +369,12 @@
 
 ;; FIXME: takes n>=1 lists
 (define (for-each f l)
-  (cond ((not (null? l))
-         (f (car l))
-         (for-each f (cdr l)))))
+  (if (null? l)
+      (unspecified)
+      (let lp ((l l))
+        (if (null? (cdr l))
+            (f (car l))
+            (lp (cdr l))))))
 
 ;; call-with-current-continuation call/cc
 ;; dynamic-wind
