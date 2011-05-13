@@ -122,7 +122,7 @@ func Conscheme(header, code Obj) Obj {
 		panic(fmt.Sprintf("First instruction is not FRAME: %d", i))
 	}
 
-	return run(bc, (*constants).([]Obj), primordial, start_frame(int(i & OP1_R2)))
+	return run(bc, (*constants).([]Obj), primordial, start_frame(int(i & OP1_R2)), nil)
 }
 
 type Frame struct {
@@ -131,7 +131,6 @@ type Frame struct {
 	savedpc int
 	argnum int
 	regs []Obj
-	argstack vector.Vector
 	cc *Procedure
 }
 
@@ -159,7 +158,7 @@ func tail_frame(f *Frame, n int) {
 	}
 }
 
-func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
+func run(bc []uint32, consts []Obj, ct Obj, stack *Frame, argstack vector.Vector) Obj {
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Printf("Error in Scheme code: %v\n", err)
@@ -181,9 +180,9 @@ func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
 				fmt.Printf(", ")
 			}
 			fmt.Printf("\nargstack: ")
-			if stack.argstack != nil {
-				for i := 0; i < stack.argstack.Len(); i++ {
-					o := stack.argstack.At(i)
+			if argstack != nil {
+				for i := 0; i < argstack.Len(); i++ {
+					o := argstack.At(i)
 					Write((o).(Obj))
 					fmt.Printf(", ")
 				}
@@ -212,7 +211,7 @@ func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
 			stack.regs[rreg] = v
 		case PUSH:
 			//fmt.Printf("pushing reg %d on argument stack", i & OP1_R2)
-			stack.argstack.Push(stack.regs[i & OP1_R2])
+			argstack.Push(stack.regs[i & OP1_R2])
 		case MOVE:
 			src := (i & OP1_R1) >> OP1_R1_SHIFT
 			dst := (i & OP1_R2)
@@ -249,7 +248,7 @@ func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
 				// created by eval.
 				args := make([]Obj, argnum)
 				for i := argnum-1; i >= 0; i-- {
-					args[i] = (stack.argstack.Pop()).(Obj)
+					args[i] = (argstack.Pop()).(Obj)
 				}
 				stack.regs[r] = p.apply(p, args, ct)
 				continue
@@ -261,7 +260,7 @@ func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
 			}
 			frame := call_frame(stack, r, pc, argnum + int((dst_i & OP1_R2)))
 			for i := argnum-1; i >= 0; i-- {
-				frame.regs[i] = (stack.argstack.Pop()).(Obj)
+				frame.regs[i] = (argstack.Pop()).(Obj)
 			}
 			frame.cc = p
 			frame.argnum = argnum
@@ -282,7 +281,7 @@ func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
 			}
 			tail_frame(stack, argnum + int((dst_i & OP1_R2)))
 			for i := argnum-1; i >= 0; i-- {
-				stack.regs[i] = (stack.argstack.Pop()).(Obj)
+				stack.regs[i] = (argstack.Pop()).(Obj)
 			}
 			stack.cc = p
 			stack.argnum = argnum
@@ -333,7 +332,7 @@ func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
 			args := make([]Obj, argnum)
 			// fmt.Printf("primitive: %d, argnum: %d\nargs:",primitive,argnum)
 			for i := argnum-1; i >= 0; i-- {
-				args[i] = (stack.argstack.Pop()).(Obj)
+				args[i] = (argstack.Pop()).(Obj)
 				// Write(args[i])
 				// fmt.Printf(", ")
 			}
@@ -369,7 +368,7 @@ func aprun(proc *Procedure, args []Obj, ct Obj) Obj {
 	copy(stack.regs, args)
 	// stack_trace(stack)
 
-	return run(proc.bc, proc.consts, ct, stack)
+	return run(proc.bc, proc.consts, ct, stack, nil)
 }
 
 func stack_trace(stack *Frame) {
