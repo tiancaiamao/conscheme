@@ -82,7 +82,7 @@
 
 ;; TODO: handle non-integers
 (define (even? x)
-  (zero? (modulo x 2)))
+  (eq? 0 (bitwise-and x 1)))
 
 ;; max min
 
@@ -388,9 +388,11 @@
 (define (call-with-values prod cons)
   (apply cons (prod)))
 
-
 (define (eval expr environment)
-  ($eval (compile-expression expr)))
+  (let ((code (compile-expression expr)))
+    (let ((bc (vector-ref code 0))
+          (consts (vector-ref code 1)))
+      ($bytecode-run bc consts (current-thread)))))
 
 (define (scheme-report-environment v) #f)
 (define (null-environment) #f)

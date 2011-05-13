@@ -81,7 +81,7 @@
     (eq? . 50)
     (exit . 51)
     (command-line . 52)
-    ($eval . 53)
+    ($bytecode-run . 53)
     ($make-cell . 54)
     ($cell-ref . 55)
     ($cell-set! . 56)
@@ -207,39 +207,20 @@
   (display "package conscheme\n" p)
   (display "import \"fmt\"\n" p)
   (display "import \"os\"\n" p)
-  (display "var primitives map[string]Obj = make(map[string]Obj)\n" p)
-  (display (string-append "var primnums [" (number->string
-                                            (length *primitive-numbers*)) "]Obj\n") p)
+  (display (string-append "var primitive [" (number->string
+                                             (length *primitive-numbers*)) "]Obj\n") p)
   (display "func init() {\n" p)
-  (display "\tvar prim Obj\n" p)
   (for-each (lambda (prim)
-              (let ((required (formals-required (cdr prim))))
+              (let ((required (formals-required (cdr prim)))
+                    (number (number->string (primitive-number (car prim)))))
                 (display (string-append
-                          "\tprim = "
+                          "\tprimitive[" number "] = "
                           "wrap(&Procedure{name:\"" (symbol->string (car prim)) "\","
                           "required:" (number->string required) ","
-                          "apply:apprim"
-                          "})\n"))
-                (display (string-append
-                          "\tprimitives[\"" (symbol->string (car prim)) "\"] = prim\n"))
-                (display (string-append
-                          "\tprimnums[" (number->string
-                                         (primitive-number (car prim))) "] = prim\n"))))
+                          "apply:apprim,"
+                          "label:" number
+                          "})\n"))))
             *primitives*)
-  (display "}\n\n" p)
-  (display "func evprim(primop string, args []Obj, ct Obj) Obj {\n" p)
-  (display "\tswitch primop {\n" p)
-  (for-each (lambda (op)
-              (display (string-append "\tcase \"" (symbol->string (car op)) "\":\n") p)
-              (for-each (lambda (line)
-                          (display (string-append "\t\t" line "\n") p))
-                        ((cdr op))))
-            *operations*)
-  (display "\tdefault:\n" p)
-  (display "\t\tfmt.Fprintf(os.Stderr, \"Please regenerate primitives.go\\n\")\n" p)
-  (display "\t\tpanic(fmt.Sprintf(\"Unimplemented primitive: %s\",primop))\n" p)
-  (display "\t}\n" p)
-  (display "\tpanic(fmt.Sprintf(\"Fell off the edge in evprim(): %s\",primop))\n" p)
   (display "}\n\n" p)
 
   (display "func evprimn(primop uint32, args []Obj, ct Obj) Obj {\n" p)
@@ -247,7 +228,8 @@
   (for-each (lambda (op)
               (display (string-append "\tcase " (number->string
                                                  (primitive-number (car op)))
-                                      ":\n") p)
+                                      ": // " (symbol->string (car op))
+                                      "\n") p)
               (for-each (lambda (line)
                           (display (string-append "\t\t" line "\n") p))
                         ((cdr op))))
@@ -258,7 +240,6 @@
   (display "\t}\n" p)
   (display "\tpanic(fmt.Sprintf(\"Fell off the edge in evprimn(): %s\",primop))\n" p)
   (display "}\n\n" p))
-
 
 ;; Booleans
 
@@ -378,7 +359,7 @@
 
 (define-call command-line "Command_line" 0)
 
-(define-call $eval "Eval" 1)
+(define-call $bytecode-run "_bytecode_run" 3)
 
 ;; Cells, internal to the compiler, used for mutation. TODO: should
 ;; not be callable by the user.
