@@ -477,12 +477,11 @@
 (define (load filename)
   (call-with-input-file filename
     (lambda (p)
-      (let lp ((datums '()))
+      (let lp ()
         (let ((datum (read p)))
-          (if (eof-object? datum)
-              (eval (cons 'begin (reverse datums))
-                    (interaction-environment))
-              (lp (cons datum datums))))))))
+          (unless (eof-object? datum)
+            (eval datum (interaction-environment))
+            (lp)))))))
 
 ;;; R6RS
 
