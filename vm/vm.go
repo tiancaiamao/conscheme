@@ -90,11 +90,6 @@ func Conscheme(header, code Obj) Obj {
 		}
 	}
 
-	if version == -1 {
-		// No bytecode: fallback to the old image format
-		return Eval(code)
-	}
-
 	if version != 1 {
 		panic(fmt.Sprintf("Incompatible bytecode: %d", version))
 	}
@@ -108,38 +103,53 @@ func Conscheme(header, code Obj) Obj {
 	// Write(constants)
 	// fmt.Printf("\n")
 
-	// The bytecode is 32-bit integers encoded in little endian format
-	_bc := (*bytecode).([]byte)
-	bc := make([]uint32, len(_bc) / 4)
-	rbc := bytes.NewBuffer(_bc)
+	return _bytecode_run(bytecode, constants, primordial)
+}
 
-	if err := binary.Read(rbc, binary.LittleEndian, bc); err != nil {
-		panic(fmt.Sprintf("Trouble converting to integers: %s", err))
+// Top-level environment. Should there be one of these per process, or
+// should there just be a lock around it? One possible optimization:
+// this is used for $global-set! and $global-ref, so it is probably
+// beneficial to map names to locations at compile-time.
+var env map[string]Obj = make(map[string]Obj)
+
+type Procedure struct {
+	name string
+	required int
+	apply func (proc *Procedure, args []Obj, ct Obj) Obj
+	label int
+	free []Obj
+	code *Code
+}
+
+func procedure_p(x Obj) Obj {
+	if is_immediate(x) { return False }
+	switch _ := (*x).(type) {
+	case *Procedure:
+		return True
 	}
+	return False
+}
 
-	i := bc[0]
-	if (i >> I_SHIFT) != FRAME {
-		panic(fmt.Sprintf("First instruction is not FRAME: %d", i))
-	}
-
-	return run(bc, (*constants).([]Obj), primordial, start_frame(int(i & OP1_R2)))
+type Code struct {
+	bc []uint32		// bytecode
+	consts []Obj		// constants pool
 }
 
 type Frame struct {
 	up *Frame
 	rreg int
 	savedpc int
-	argnum int
+	argnum int		// for CONSARGS
 	regs []Obj
-	argstack vector.Vector
 	cc *Procedure
+	code *Code
 }
 
-func start_frame(size int) *Frame {
+func start_frame(size int, code *Code) *Frame {
 	// Creates the frame at the top of the stack
 	r := make([]Obj, size)
 	for i := 0; i < size; i++ { r[i] = Void }
-	return &Frame{regs: r}
+	return &Frame{regs: r, code: code}
 }
 
 func call_frame(up *Frame, rreg, savedpc, size int) *Frame {
@@ -159,7 +169,30 @@ func tail_frame(f *Frame, n int) {
 	}
 }
 
-func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
+func _bytecode_run(bytecode, constants, current_thread Obj) Obj {
+	// The bytecode is 32-bit integers encoded in little endian format
+	_bc := (*bytecode).([]byte)
+	bc := make([]uint32, len(_bc) / 4)
+	rbc := bytes.NewBuffer(_bc)
+
+	if err := binary.Read(rbc, binary.LittleEndian, bc); err != nil {
+		panic(fmt.Sprintf("Trouble converting to integers: %s", err))
+	}
+
+	i := bc[0]
+	if (i >> I_SHIFT) != FRAME {
+		panic(fmt.Sprintf("First instruction is not FRAME: %d", i))
+	}
+
+	// TODO: this has to link the stack to the caller's stack.
+	// This means that primitives need access to the stack. That
+	// will also be useful for apply and call/cc.
+	return run(primordial,
+		start_frame(int(i & OP1_R2), &Code{bc, (*constants).([]Obj)}),
+		nil)
+}
+
+func run(ct Obj, stack *Frame, argstack vector.Vector) Obj {
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Printf("Error in Scheme code: %v\n", err)
@@ -170,7 +203,7 @@ func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
 	pc := stack.savedpc
 
 	for {
-		i := bc[pc]
+		i := stack.code.bc[pc]
 		if false {
 			name := "*unknown*"
 			if stack.cc != nil { name = stack.cc.name }
@@ -181,9 +214,9 @@ func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
 				fmt.Printf(", ")
 			}
 			fmt.Printf("\nargstack: ")
-			if stack.argstack != nil {
-				for i := 0; i < stack.argstack.Len(); i++ {
-					o := stack.argstack.At(i)
+			if argstack != nil {
+				for i := 0; i < argstack.Len(); i++ {
+					o := argstack.At(i)
 					Write((o).(Obj))
 					fmt.Printf(", ")
 				}
@@ -212,7 +245,7 @@ func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
 			stack.regs[rreg] = v
 		case PUSH:
 			//fmt.Printf("pushing reg %d on argument stack", i & OP1_R2)
-			stack.argstack.Push(stack.regs[i & OP1_R2])
+			argstack.Push(stack.regs[i & OP1_R2])
 		case MOVE:
 			src := (i & OP1_R1) >> OP1_R1_SHIFT
 			dst := (i & OP1_R2)
@@ -222,7 +255,7 @@ func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
 			stack.regs[dst] = Void
 		case CLOSURE:
 			f := make([]Obj, (i & OP1_N) >> OP1_N_SHIFT)
-			stack.regs[i & OP1_R2] = wrap(&Procedure{apply: aprun, free: f, bc: bc, consts: consts})
+			stack.regs[i & OP1_R2] = wrap(&Procedure{apply: aprun, free: f, code: stack.code})
 		case CLOSURE_NAME:
 			p := (*stack.regs[i & OP1_R2]).(*Procedure)
 			name := stack.regs[(i & OP1_R1)>>OP1_R1_SHIFT]
@@ -245,26 +278,26 @@ func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
 			if is_immediate(_p) { panic("Bad type to apply") }
 			p := (*_p).(*Procedure)
 			if p.apply != aprun {
-				// This is a primitive or a procedure
-				// created by eval.
+				// This is a primitive.
 				args := make([]Obj, argnum)
 				for i := argnum-1; i >= 0; i-- {
-					args[i] = (stack.argstack.Pop()).(Obj)
+					args[i] = (argstack.Pop()).(Obj)
 				}
 				stack.regs[r] = p.apply(p, args, ct)
 				continue
 			}
-			dst_i := bc[p.label]
+			dst_i := p.code.bc[p.label]
 			if (dst_i >> I_SHIFT) != FRAME {
 				panic(fmt.Sprintf("Procedure %s at #x%x has no FRAME: #x%x",
 					p.name, p.label, i))
 			}
 			frame := call_frame(stack, r, pc, argnum + int((dst_i & OP1_R2)))
 			for i := argnum-1; i >= 0; i-- {
-				frame.regs[i] = (stack.argstack.Pop()).(Obj)
+				frame.regs[i] = (argstack.Pop()).(Obj)
 			}
 			frame.cc = p
 			frame.argnum = argnum
+			frame.code = p.code
 			stack = frame
 			pc = p.label
 			// stack_trace(stack)
@@ -274,18 +307,19 @@ func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
 			_p := stack.regs[i & OP1_R2]
 			if is_immediate(_p) { panic("Bad type to apply") }
 			p := (*_p).(*Procedure)
-			if p.apply != aprun { panic("TODO: tail-calling eval'd procedure") }
-			dst_i := bc[p.label]
+			dst_i := p.code.bc[p.label]
 			if (dst_i >> I_SHIFT) != FRAME {
 				panic(fmt.Sprintf("Procedure at #x%x has no FRAME: #x%x",
 					p.label, i))
 			}
+			if p.apply != aprun { panic("tail-call to primitive") }
 			tail_frame(stack, argnum + int((dst_i & OP1_R2)))
 			for i := argnum-1; i >= 0; i-- {
-				stack.regs[i] = (stack.argstack.Pop()).(Obj)
+				stack.regs[i] = (argstack.Pop()).(Obj)
 			}
 			stack.cc = p
 			stack.argnum = argnum
+			stack.code = p.code
 			pc = p.label
 			//fmt.Printf("tailcall to %d, new frame = %v\n",pc,stack)
 		case CONSARGS:
@@ -307,7 +341,7 @@ func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
 			abs := pc - 1 + int17(disp)
 			pc = abs
 		case CONST_REF:
-			stack.regs[i & OP2_R] = consts[(i & OP2_N) >> OP2_N_SHIFT]
+			stack.regs[i & OP2_R] = stack.code.consts[(i & OP2_N) >> OP2_N_SHIFT]
 		case CLOSURE_LABEL:
 			p := (*stack.regs[i & OP2_R]).(*Procedure)
 			disp := (i & OP2_N) >> OP2_N_SHIFT
@@ -333,7 +367,7 @@ func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
 			args := make([]Obj, argnum)
 			// fmt.Printf("primitive: %d, argnum: %d\nargs:",primitive,argnum)
 			for i := argnum-1; i >= 0; i-- {
-				args[i] = (stack.argstack.Pop()).(Obj)
+				args[i] = (argstack.Pop()).(Obj)
 				// Write(args[i])
 				// fmt.Printf(", ")
 			}
@@ -341,8 +375,7 @@ func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
 			stack.regs[r] = evprimn(primitive, args, ct)
 		case PRIMREF:
 			r := i & OP3_R
-			primitive := (i & OP3_N2) >> OP3_N2_SHIFT
-			stack.regs[r] = primnums[primitive]
+			stack.regs[r] = primitive[(i & OP3_N2) >> OP3_N2_SHIFT]
 		// unknown opcodes
 		default:
 			panic(fmt.Sprintf("Unimplemented bytecode op: #b%b (in #x%x)",
@@ -354,22 +387,22 @@ func run(bc []uint32, consts []Obj, ct Obj, stack *Frame) Obj {
 }
 
 func aprun(proc *Procedure, args []Obj, ct Obj) Obj {
-	// This is only called from eval and apply. This unfortunately
-	// means that apply breaks TCO. It also breaks stack traces.
-	// TODO: get rid of eval, etc, and do this properly.
-	i := proc.bc[proc.label]
+	// This is only called from apply. This unfortunately means that
+	// apply breaks TCO. It also breaks stack traces. TODO: do this
+	// properly.
+	i := proc.code.bc[proc.label]
 	if (i >> I_SHIFT) != FRAME {
 		panic(fmt.Sprintf("First instruction is not FRAME: %d", i))
 	}
 	// fmt.Printf("aprun makes a new stack :(\n")
-	stack := start_frame(len(args) + int(i & OP1_R2))
+	stack := start_frame(len(args) + int(i & OP1_R2), proc.code)
 	stack.savedpc = proc.label
 	stack.cc = proc
 	stack.argnum = len(args)
 	copy(stack.regs, args)
 	// stack_trace(stack)
 
-	return run(proc.bc, proc.consts, ct, stack)
+	return run(ct, stack, nil)
 }
 
 func stack_trace(stack *Frame) {
@@ -377,7 +410,8 @@ func stack_trace(stack *Frame) {
 	for ; stack != nil; stack = stack.up {
 		name := "*unknown*"
 		if stack.cc != nil { name = stack.cc.name }
-		fmt.Printf("SavedPC=#x%x  Closure=%s", stack.savedpc, name)
+		fmt.Printf("SavedPC=#x%x/#x%x  Closure=%s", stack.savedpc,
+			len(stack.code.bc), name)
 		fmt.Printf("  Regs=%d", len(stack.regs))
 		fmt.Printf("\n")
 	}

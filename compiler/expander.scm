@@ -31,9 +31,7 @@
 ;; (set! <variable> <expression>)
 ;; <variable>
 
-;; It would be nice to write this code with quasiquote, etc, but then
-;; we'd be forced to implement them, which I'm not sure we will have
-;; time to do.
+;; Most of this code was written before we had quasiquote.
 
 (cond-expand
  (guile
@@ -223,7 +221,79 @@
                             (append body
                                     (list (cons lp (map caddr vars-up))))))))))
 
-;; TODO: quasiquote
+;; Most likely there are a bunch of bugs in this implementation of
+;; quasiquote. It does not handle the multi-expression unquote and
+;; unquote-splicing from the R6RS. Maybe it doesn't keep constant
+;; datums constant.
+(define-macro (quasiquote template)
+  (define (simp x)
+    ;; (print "SIMP " x)
+    (cond ((and (pair? x) (eq? (car x) 'cons)
+                (pair? (cdr x)))
+           (let ((d (cddr x)))
+             ;; (print "#;D " d)
+             (cond ((and (pair? d) (equal? d '('())))
+                    (list 'list (cadr x)))
+                   ((and (pair? d) (eq? (caar d) 'list) (null? (cdr d)))
+                    (cons 'list (cons (cadr x)
+                                      (cdar d))))
+                   (else
+                    ;; XXX: should probably simplify more here
+                    x))))
+          ((and (pair? x) (eq? (car x) 'list))
+           (if (for-all (lambda (x)
+                           (and (pair? x) (pair? (cdr x)) (null? (cddr x))
+                                (eq? (car x) 'quote)))
+                         (cdr x))
+               (list 'quote (map cadr (cdr x)))
+               (cons 'list (map simp (cdr x)))))
+          (else x)))
+  ;; See the R5RS 7.1.4 and 4.2.6
+  (define (qq template depth)
+    ;;(print template " @ " depth)
+    (cond ((pair? template)
+           ;; <list qq template D>  etc
+           (let ((x (car template)))
+             (cond ((pair? x)
+                    ;;(print 'is-pair: '(car x) (car x) '(cdr template) (cdr template))
+                    (cond ((and (eq? (car x) 'unquote-splicing)
+                                #;(pair? (cdr template)))
+                           (let ((depth* (- depth 1)))
+                             (if (= depth* 0)
+                                 (list 'append (cadr x)
+                                       (qq (cdr template) depth))
+                                 ;; a level above the first quasiquote...
+                                 (simp (list 'cons (list 'list '(quote unquote-splicing)
+                                                         (qq (cadr template))))))))
+                          ;; XXX: would probably check for unquote
+                          ;; here in order to handle the new
+                          ;; quasiquote stuff in the R6RS
+                          (else
+                           (simp (list 'cons (qq (car template) depth)
+                                       (qq (cdr template) depth))))))
+                   ((eq? x 'unquote)
+                    ;; <unquotation D>
+                    (let ((depth (- depth 1)))
+                      (if (= depth 0)
+                          (cadr template)
+                          ;; haven't reached the first quasiquote yet
+                          ;; here either
+                          (simp (list 'list '(quote unquote)
+                                      (qq (cadr template) depth))))))
+                   ((eq? x 'quasiquote)
+                    ;; nested quasiquote
+                    (simp (list 'list '(quote quasiquote)
+                                (qq (cadr template) (+ depth 1)))))
+                   (else
+                    (simp (list 'cons (qq (car template) depth)
+                                (qq (cdr template) depth)))))))
+          ((vector? template)
+           ;; <vector qq template D>
+           ;; XXX: this seems ugly
+           (list 'list->vector (qq (vector->list template) depth)))
+          (else                         ;datum
+           (list 'quote template))))
+  (simp (qq template 1)))
 
 (define (formals-to-list x)
   (cond ((null? x) x)

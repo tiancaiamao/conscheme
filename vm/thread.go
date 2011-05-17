@@ -137,6 +137,7 @@ func thread_start_ex(thread Obj) Obj {
 				return
 			}
 		}()
+		// This has to create a new stack
 		ap(t.thunk, nil, thread)
 	});
 
