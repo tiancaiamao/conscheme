@@ -622,79 +622,72 @@
         (else
          (error 'make-thread "Too many arguments" thunk rest))))
 
-(define (receive) 
+(define (receive)
   ($receive (current-thread)))
 ;;; Misc
 
-(select '(1 2 3)
-  (#(1 2 b) b)
-  (#(3 4 b) b)
-  )
-
-(define-macro (compile-array exp match)
-  (list 
-    (let lp ((count 0))
-      (if (= count (- (length exp) 1))
-        #t
-        (list 'and (list 'at? exp count (vector-ref (car match) count)) (lp (+ count 1)))))))
-
-(define (at? exp count match)
-  (let lp ((exp exp) (count count))
-    (if (= count 0)
-      (equal? (car exp) match)
-      (if (null? exp)
-        #f
-        (lp (cdr exp) (- count 1))))))
-
-(define (selecthelper p sym)
-  (cond ((vector? p) 
-         (let lp ((i 0) (acc '()))
-           (cond ((= i (vector-length p)) acc)
-                 ((symbol? (vector-ref p i)) 
-                  (lp (+ i 1) acc))
-                 (else 
-                   (let ((tmp (vector-ref p i)))
-                     (cond ((and (pair? tmp) (eq? (car tmp) 'quote)
-                                 (list? tmp) (= (length tmp) 2))
-                            (lp (+ i 1) 
-                                (cons (list 'eq? (cadr tmp) 
-                                            (list 'vector-ref sym i))   
-                                      acc)))
-                           (else 
+(define-macro (select . ar)
+  (define (make-test p sym)
+    (cond ((vector? p)
+           (let lp ((i 0) (acc '()))
+             (cond ((= i (vector-length p))
+                    (cons `(= (vector-length ,sym) ,i) acc))
+                   ((symbol? (vector-ref p i))
+                    (lp (+ i 1) acc))
+                   (else
+                    (let ((tmp (vector-ref p i)))
+                      (cond ((and (pair? tmp) (eq? (car tmp) 'quote)
+                                  (list? tmp) (= (length tmp) 2))
                              (lp (+ i 1)
-                                 (cons (list 'equal? tmp
-                                             (list 'vector-ref sym i)) 
+                                 (cons `(eq? ,(cadr tmp) (vector-ref ,sym ,i))
+                                       acc)))
+                            (else
+                             (lp (+ i 1)
+                                 (cons `(equal? ,tmp (vector-ref ,sym ,i))
                                        acc)))))))))
-        ((eq? p 'else) '())
-        ((eq? p 'timeout) (error 'fixme "timeout"))
-        (else (error 'select "Bad pattern"))))
+          ((eq? p 'else) '())
+          ((eq? p 'timeout) (error 'fixme "timeout"))
+          (else (error 'select "Bad pattern" p))))
+  (define (make-bind p sym)
+    (cond ((vector? p)
+           (let lp ((i 0) (acc '()))
+             (cond ((= i (vector-length p)) acc)
+                   ((not (symbol? (vector-ref p i)))
+                    (lp (+ i 1) acc))
+                   (else
+                    (let ((tmp (vector-ref p i)))
+                      (lp (+ i 1)
+                          (cons `(,tmp (vector-ref ,sym ,i))
+                                acc)))))))
+          ((eq? p 'else) '())
+          ((eq? p 'timeout) '())
+          (else (error 'select "Bad pattern"))))
+  ;; TODO: save unwanted messages in thread-queue (a default `else' case)
+  ;; TODO: search over the thread-queue before doing receive
+  ;; TODO: set up timeouts (with serial numbers to keep them unique)
+  (let ((tmp (gensym))
+        #;(time 42))
+    `(begin
+       #;(set-timeout! ,time)
+       (let ((,tmp (receive)))
+         (cond ,@(map (lambda (x)
+                        `((and ,@(make-test (car x) tmp))
+                          (let ,(make-bind (car x) tmp)
+                                 ,@(cdr x))))
+                      ar))))))
 
-(define (lethelper p sym)
-  (cond ((vector? p) 
-         (let lp ((i 0) (acc '()))
-           (cond ((= i (vector-length p)) acc)
-                 ((not (symbol? (vector-ref p i)))
-                  (lp (+ i 1) acc))
-                 (else 
-                   (let ((tmp (vector-ref p i)))
-                         (lp (+ i 1)
-                             (cons (list tmp
-                                         (list 'vector-ref sym i)) 
-                                   acc)))))))
-        ((eq? p 'else) '())
-        ((eq? p 'timeout) '())
-        (else (error 'select "Bad pattern"))))
+
+;; (Xselect '(#(1 2 b) (print "thing 1 2:" b))
+;;          '(#(3 4 b) (print "thing 3 4:" b)))
+
+;; (begin
+;;   (send (current-thread) '#(3 4 grundig))
+;;   (select
+;;    (#(1 2 b) (print "1 2: " b))
+;;    (#(3 4 b) (print "3 4: " b))
+;;    (else (print "no match"))))
 
 
-
-(define (select . ar) 
-  (let ((tmp (gensym)))
-    (list 'begin (list 'set-timeout! 42)
-           (list 'let (list (list tmp '(receive))) 
-                 (cons 'cond (map (lambda (x) 
-                                    (list (list 'and (selecthelper (car x) tmp) 
-                                          (cons 'let (cons (lethelper (car x) tmp) (cdr x)))))) 
-                                  ar))))))
 
 (define (error who why . irritants)
   (display "Error from ")
