@@ -187,7 +187,7 @@ func _bytecode_run(bytecode, constants, current_thread Obj) Obj {
 	// TODO: this has to link the stack to the caller's stack.
 	// This means that primitives need access to the stack. That
 	// will also be useful for apply and call/cc.
-	return run(primordial,
+	return run(current_thread,
 		start_frame(int(i & OP1_R2), &Code{bc, (*constants).([]Obj)}),
 		nil)
 }
