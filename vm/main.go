@@ -40,7 +40,6 @@ const dirsep = "/"
 const pathsep = ":"
 
 func usage() {
-	// TODO: find the image automatically
 	fmt.Fprintf(os.Stderr, "Usage: conscheme [OPTION]... [ARGUMENT]...\n")
 	flag.PrintDefaults()
 	os.Exit(1)

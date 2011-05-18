@@ -27,7 +27,12 @@ import (
 	"container/vector"
 	"encoding/binary"
 	"fmt"
+	"runtime"
 )
+
+// When GOMAXPROCS is larger than 1, we apparently need to implement
+// our own timer tick to get some sort of preemptive threading.
+const SCHED_TICK = 100
 
 const (
 	// Instruction numbers
@@ -201,8 +206,10 @@ func run(ct Obj, stack *Frame, argstack vector.Vector) Obj {
 		}
 	}()
 	pc := stack.savedpc
+	cycles := 0
 
 	for {
+		cycles++; if cycles > SCHED_TICK { cycles = 0; runtime.Gosched() }
 		i := stack.code.bc[pc]
 		if false {
 			name := "*unknown*"
