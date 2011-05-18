@@ -354,7 +354,7 @@ func String_set_ex(x,idx,ch Obj) Obj {
 
 // It would be better to use a weak hashset here, if one was available
 var symtab map[string]Obj = make(map[string]Obj)
-var symlock sync.Mutex
+var symlock sync.RWMutex
 
 func intern(x string) Obj {
 	return String_to_symbol(String_string(x))
@@ -370,22 +370,20 @@ func symbol_p(x Obj) Obj {
 	return False
 }
 
-func String_to_symbol(x Obj) Obj {
-	if string_p(x) == False {
-		panic("bad type")
-		return Void
-	}
-	v := (*x).([]int)
-	str := string(v)
-	symlock.Lock();	defer symlock.Unlock()
+func getsym(str string) (Obj, bool) {
+	symlock.RLock(); defer symlock.RUnlock()
 	sym, is_interned := symtab[str]
-	if is_interned {
-		// string->symbol has already interned this symbol
-		return sym
-	}
+	return sym, is_interned
+}
+
+func String_to_symbol(x Obj) Obj {
+	if is_immediate(x) { panic("bad type") }
+	str := string((*x).([]int))
+	sym, is_interned := getsym(str)
+	if is_interned { return sym }
 	// Intern the new symbol
-	var stri interface{} = str
-	sym = Obj(&stri)
+	symlock.Lock(); defer symlock.Unlock()
+	sym = wrap(str)
 	symtab[str] = sym
 	return sym
 }
@@ -480,7 +478,7 @@ func Obj_display(x Obj, p io.Writer, write Obj) {
 		fmt.Fprintf(p, ")")
 	case thread_p(x) != False:
 		fmt.Fprintf(p, "#<thread ")
-		t := (*x).(Thread)
+		t := (*x).(*Thread)
 		Obj_display(t.name, p, write)
 		fmt.Fprintf(p, ">")
 	// Unknown types
