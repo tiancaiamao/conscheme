@@ -485,6 +485,11 @@
 
 ;;; R6RS
 
+(define (assp proc list)
+  (cond ((null? list) #f)
+        ((proc (caar list)) (car list))
+        (else (assp proc (cdr list)))))
+
 (define (remp proc list)
   (cond ((null? list) '())
         ((proc (car list))
@@ -550,7 +555,6 @@
           (lp (- len 1)
               (cons fill ret))))))
 
-;; This should probably be implemented as a primitive if it's important.
 (define (cons* x . xs)
   (if (null? xs)
       x
@@ -615,16 +619,70 @@
 ;;; SRFI-18
 
 (define (make-thread thunk . rest)
-  (cond ((null? rest)
-         ($make-thread thunk "unnamed"))
-        ((null? (cdr rest))
-         ($make-thread thunk (car rest)))
-        (else
-         (error 'make-thread "Too many arguments" thunk rest))))
+  (let ((thunk* (lambda ()
+                  (thread-queue-set! (current-thread) (make-queue))
+                  (thunk))))
+    (cond ((null? rest)
+           ($make-thread thunk* "unnamed"))
+          ((null? (cdr rest))
+           ($make-thread thunk* (car rest)))
+          (else
+           (error 'make-thread "Too many arguments" thunk rest)))))
 
 (define (receive)
   ($receive (current-thread)))
-;;; Misc
+
+;;; Extra threading stuff
+
+(define (spawn-link thunk . rest)
+  (let ((t (apply make-thread thunk rest)))
+    ;; this would be more effective if the messages sent on abnormal
+    ;; termination also raised an error in the receiving thread
+    (thread-link! t (current-thread))
+    (thread-link! (current-thread) t)
+    (thread-start! t)
+    t))
+
+;; these queues are private to the select syntax
+(define (make-queue)
+  (let ((x (cons #f '())))
+    ;; head, tail, cursor, previous
+    (vector x x x #f)))
+
+(define (queue-restart! q)
+  ;; set to the cursor to the start of the queue
+  (vector-set! q 2 (vector-ref q 0))
+  (vector-set! q 3 #f))
+
+(define (enqueue! q e)
+  ;; put a message at the end of the queue
+  (let ((p (cons e '())))
+    (set-cdr! (vector-ref q 1) p)
+    (vector-set! q 1 p)))
+
+(define (queue-next! q)
+  ;; return the next message in the queue (from the cursor), and do
+  ;; receive if the cursor is at the end of the queue
+  (if (eq? (vector-ref q 1) (vector-ref q 2))
+      (let ((msg (receive)))            ;get another message
+        (enqueue! q msg)
+        (queue-next! q))
+      (let* ((cursor (vector-ref q 2))
+             (v (cadr cursor)))
+        (vector-set! q 2 (cdr cursor))
+        (vector-set! q 3 cursor)
+        v)))
+
+(define (queue-remove! q)
+  ;; remove the message returned by queue-next!.
+  (let ((prev (vector-ref q 3))
+        (cursor (vector-ref q 2)))
+    (set-cdr! prev (cdr cursor))
+    (vector-set! q 2 prev)
+    (vector-set! q 3 #f)
+    (when (eq? cursor (vector-ref q 1))
+      ;; the cursor was at the tail, so adjust the tail
+      (vector-set! q 1 prev))))
 
 (define-macro (select . ar)
   (define (make-test p sym)
@@ -637,6 +695,11 @@
                    (else
                     (let ((tmp (vector-ref p i)))
                       (cond ((and (pair? tmp) (eq? (car tmp) 'quote)
+                                  (list? tmp) (= (length tmp) 2))
+                             (lp (+ i 1)
+                                 (cons `(eq? ',(cadr tmp) (vector-ref ,sym ,i))
+                                       acc)))
+                            ((and (pair? tmp) (eq? (car tmp) 'eq?)
                                   (list? tmp) (= (length tmp) 2))
                              (lp (+ i 1)
                                  (cons `(eq? ,(cadr tmp) (vector-ref ,sym ,i))
@@ -662,32 +725,51 @@
           ((eq? p 'else) '())
           ((eq? p 'timeout) '())
           (else (error 'select "Bad pattern"))))
-  ;; TODO: save unwanted messages in thread-queue (a default `else' case)
-  ;; TODO: search over the thread-queue before doing receive
-  ;; TODO: set up timeouts (with serial numbers to keep them unique)
   (let ((tmp (gensym))
-        #;(time 42))
+        (Q (gensym))
+        (loop (gensym)))
     `(begin
-       #;(set-timeout! ,time)
-       (let ((,tmp (receive)))
-         (cond ,@(map (lambda (x)
-                        `((and ,@(make-test (car x) tmp))
-                          (let ,(make-bind (car x) tmp)
-                                 ,@(cdr x))))
-                      ar))))))
+       ;; TODO: set up timeouts (with ids to keep them unique)
+       #;(let ((,tt (start-timeout ,time ,timeout-id))))
+       (let ((,Q (thread-queue (current-thread))))
+         (queue-restart! ,Q)
+         (let ,loop ()
+           (let ((,tmp (queue-next! ,Q)))
+             (cond ,@(map (lambda (x)
+                            `((and ,@(make-test (car x) tmp))
+                              (queue-remove! ,Q)
+                              (let ,(make-bind (car x) tmp)
+                                ,@(cdr x))))
+                          ar)
+                   ,@(if (assq 'else ar)
+                         '()
+                         ;; the default else case
+                         `((else (,loop)))))))))))
 
-
-;; (Xselect '(#(1 2 b) (print "thing 1 2:" b))
-;;          '(#(3 4 b) (print "thing 3 4:" b)))
+(define (parallel-map f x)
+  (let ((t (current-thread)))
+    (map (lambda (id)
+           (select
+            (#('result (eq? id) value)
+             value)))
+         (map (lambda (e)
+                (let ((id (gensym)))
+                  (spawn-link (lambda ()
+                                (send t (vector 'result id (f e)))))
+                  id))
+              x))))
 
 ;; (begin
-;;   (send (current-thread) '#(3 4 grundig))
-;;   (select
-;;    (#(1 2 b) (print "1 2: " b))
-;;    (#(3 4 b) (print "3 4: " b))
-;;    (else (print "no match"))))
+;;   (let ((id (gensym)))
+;;     (send (current-thread) (vector 'result id 100))
+;;     (select
+;;      (#(1 2 b) (print "1 2: " b))
+;;      (#(3 4 b) (print "3 4: " b))
+;;      (#('result (eq? id) value)
+;;       (print "value received: " value)))
+;;     (thread-queue (current-thread))))
 
-
+;;; Misc
 
 (define (error who why . irritants)
   (display "Error from ")

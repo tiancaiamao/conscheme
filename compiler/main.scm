@@ -39,7 +39,8 @@
                      (srfi srfi-1)))
  (else (define (pretty-print x)
          (write x)
-         (newline))))
+         (newline))
+       (thread-queue-set! (current-thread) (make-queue))))
 
 (define (top-level-cps x)
   ;; Convert the top level to cps form (because we shamefully don't

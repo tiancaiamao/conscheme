@@ -49,14 +49,6 @@
 (check (apply + '(1 2)) => 3)
 (check (apply symbol? '(primitive-procedure-test)) => #t)
 
-(define (thread-test)
-  (let ((t ($make-thread
-            (lambda ()
-              (print "THREAD 2"))
-            "thread")))
-    (print "THREAD 1")
-    (thread-start! t)))
-
 ;; Some tests from the R6RS
 (check `(list ,(+ 1 2) 4) => '(list 3 4))
 
@@ -94,3 +86,21 @@
 ;;               (y '(4 5)))
 ;;           `(foo (unquote (append x y) (sqrt 9))))
 ;;        => '(foo (2 3 4 5) 3))
+
+;; threading
+
+(define (thread-test)
+  (let ((t ($make-thread
+            (lambda ()
+              (print "THREAD 2"))
+            "thread")))
+    (print "THREAD 1")
+    (thread-start! t)))
+
+;; FIXME: this should run on multiple cores, but for some reason our
+;; goroutines only use one core
+(parallel-map (lambda (x)
+                (do ((i 0 (+ i 1)))
+                    ((= i 300000)))
+                (cons 'something x))
+              '(1 2 3 4 5 6 7 8 9 10))

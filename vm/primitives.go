@@ -3,7 +3,7 @@
 package conscheme
 import "fmt"
 import "os"
-var primitive [101]Obj
+var primitive [103]Obj
 func init() {
 	primitive[98] = wrap(&Procedure{name:"stop-cpu-profile",required:0,apply:apprim,label:98})
 	primitive[97] = wrap(&Procedure{name:"start-cpu-profile",required:1,apply:apprim,label:97})
@@ -13,6 +13,8 @@ func init() {
 	primitive[93] = wrap(&Procedure{name:"thread-link!",required:2,apply:apprim,label:93})
 	primitive[92] = wrap(&Procedure{name:"thread-start!",required:1,apply:apprim,label:92})
 	primitive[91] = wrap(&Procedure{name:"thread-yield!",required:0,apply:apprim,label:91})
+	primitive[102] = wrap(&Procedure{name:"thread-queue-set!",required:2,apply:apprim,label:102})
+	primitive[101] = wrap(&Procedure{name:"thread-queue",required:1,apply:apprim,label:101})
 	primitive[90] = wrap(&Procedure{name:"thread-specific-set!",required:2,apply:apprim,label:90})
 	primitive[89] = wrap(&Procedure{name:"thread-specific",required:1,apply:apprim,label:89})
 	primitive[88] = wrap(&Procedure{name:"thread-name",required:1,apply:apprim,label:88})
@@ -126,6 +128,10 @@ func evprimn(primop uint32, args []Obj, ct Obj) Obj {
 		return thread_start_ex(args[0])
 	case 91: // thread-yield!
 		return thread_yield_ex()
+	case 102: // thread-queue-set!
+		return thread_queue_set_ex(args[0], args[1])
+	case 101: // thread-queue
+		return thread_queue(args[0])
 	case 90: // thread-specific-set!
 		return thread_specific_set_ex(args[0], args[1])
 	case 89: // thread-specific
