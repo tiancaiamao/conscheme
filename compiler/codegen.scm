@@ -21,9 +21,9 @@
 
 ;; Generates byte code. The input comes from the closure analysis pass.
 
-;; XXX: the top-level must be transformed into CPS form so that the
-;; body of $labels isn't so enormous and uses so many registers (we
-;; don't have register allocation)
+;; XXX: the top-level is transformed into CPS form so that the body of
+;; $labels isn't so enormous and uses so many registers (we don't have
+;; register allocation)
 
 ;; IIII INNN NNNN RRRR RRRR RRrr rrrr rrrr
 (define (op1 i n r1 r2)
@@ -86,7 +86,6 @@
     (lambda ()
       (let ((ret r))
         (set! r (+ r 1))
-        #;(list 'reg ret)
         ret))))
 
 (define (cg-new-state)
@@ -183,7 +182,6 @@
     r))
 
 (define (cg-primitive name emit s)
-  ;; TODO: does not work.
   (let ((r (cg-reg s)))
     (emit (list 'primref r name))
     r))
@@ -244,14 +242,14 @@
                                  ((pair? formals)
                                   (lp (cdr formals)
                                       (cons (cons (car formals)
-                                                  (cons 'local fi #;(list 'reg fi)))
+                                                  (cons 'local fi))
                                             env)
                                       (+ fi 1)
                                       restargs?))
                                  (else
                                   (lp '()
                                       (cons (cons formals
-                                                  (cons 'local fi #;(list 'reg fi)))
+                                                  (cons 'local fi))
                                             env)
                                       (+ fi 1)
                                       #t)))))))
@@ -351,7 +349,7 @@
            (lp (cdr code) labels (+ pc 1)))))))
 
 (define (make-assembler port labels)
-  ;; One-pass assembler. Forward references are patched by fix-op2.
+  ;; One-pass assembler.
   (let ((relocs '())
         (pc 0))
     (define (put i)
@@ -415,11 +413,3 @@
         (lambda (port extract)
           (for-each (make-assembler port labels) code)
           (vector (extract) (list->vector (cg-const-pool s))))))))
-
-#;
-(pretty-print
- (codegen
-  (closures
-   (compile-expression
-    '(lambda (x) (if x #f (cons #t (lambda (y) (cons y x)))))
-    #;'(include "main.scm")))))
