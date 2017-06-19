@@ -1,4 +1,4 @@
-// Copyright (C) 2011 Göran Weinholt <goran@weinholt.se>
+// Copyright (C) 2011, 2017 Göran Weinholt <goran@weinholt.se>
 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,11 +20,10 @@
 
 // Runs conscheme image files
 
-package conscheme
+package vm
 
 import (
 	"bytes"
-	"container/vector"
 	"encoding/binary"
 	"fmt"
 	"runtime"
@@ -128,7 +127,7 @@ type Procedure struct {
 
 func procedure_p(x Obj) Obj {
 	if is_immediate(x) { return False }
-	switch _ := (*x).(type) {
+	switch (*x).(type) {
 	case *Procedure:
 		return True
 	}
@@ -148,6 +147,21 @@ type Frame struct {
 	regs []Obj
 	cc *Procedure
 	code *Code
+}
+
+type Argstack []Obj
+
+func (s *Argstack) Push(v Obj) {
+	// XXX: check if the array is out of capacity..?
+	*s = append(*s, v)
+}
+
+func (s *Argstack) Pop() Obj {
+	l := len(*s)
+	ret := (*s)[l-1]
+	*s = (*s)[:l-1]
+
+	return ret
 }
 
 func start_frame(size int, code *Code) *Frame {
@@ -189,15 +203,17 @@ func _bytecode_run(bytecode, constants, current_thread Obj) Obj {
 		panic(fmt.Sprintf("First instruction is not FRAME: %d", i))
 	}
 
+	argstack := make(Argstack, 16)
+
 	// TODO: this has to link the stack to the caller's stack.
 	// This means that primitives need access to the stack. That
 	// will also be useful for apply and call/cc.
 	return run(current_thread,
 		start_frame(int(i & OP1_R2), &Code{bc, (*constants).([]Obj)}),
-		nil)
+		&argstack)
 }
 
-func run(ct Obj, stack *Frame, argstack vector.Vector) Obj {
+func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Printf("Error in Scheme code: %v\n", err)
@@ -220,15 +236,7 @@ func run(ct Obj, stack *Frame, argstack vector.Vector) Obj {
 				Write(stack.regs[i])
 				fmt.Printf(", ")
 			}
-			fmt.Printf("\nargstack: ")
-			if argstack != nil {
-				for i := 0; i < argstack.Len(); i++ {
-					o := argstack.At(i)
-					Write((o).(Obj))
-					fmt.Printf(", ")
-				}
-			}
-			fmt.Printf("\n")
+			fmt.Printf("\nargstack: %v\n", argstack)
 		}
 
 		pc += 1
@@ -284,13 +292,13 @@ func run(ct Obj, stack *Frame, argstack vector.Vector) Obj {
 			_p := stack.regs[(i & OP1_R1) >> OP1_R1_SHIFT]
 			if is_immediate(_p) { panic("Bad type to apply") }
 			p := (*_p).(*Procedure)
-			if p.apply != aprun {
+			if p.apply == nil {
 				// This is a primitive.
 				args := make([]Obj, argnum)
 				for i := argnum-1; i >= 0; i-- {
-					args[i] = (argstack.Pop()).(Obj)
+					args[i] = argstack.Pop()
 				}
-				stack.regs[r] = p.apply(p, args, ct)
+				stack.regs[r] = apprim(p, args, ct)
 				continue
 			}
 			dst_i := p.code.bc[p.label]
@@ -300,7 +308,7 @@ func run(ct Obj, stack *Frame, argstack vector.Vector) Obj {
 			}
 			frame := call_frame(stack, r, pc, argnum + int((dst_i & OP1_R2)))
 			for i := argnum-1; i >= 0; i-- {
-				frame.regs[i] = (argstack.Pop()).(Obj)
+				frame.regs[i] = argstack.Pop()
 			}
 			frame.cc = p
 			frame.argnum = argnum
@@ -319,10 +327,10 @@ func run(ct Obj, stack *Frame, argstack vector.Vector) Obj {
 				panic(fmt.Sprintf("Procedure at #x%x has no FRAME: #x%x",
 					p.label, i))
 			}
-			if p.apply != aprun { panic("tail-call to primitive") }
+			if p.apply == nil { panic("tail-call to primitive") }
 			tail_frame(stack, argnum + int((dst_i & OP1_R2)))
 			for i := argnum-1; i >= 0; i-- {
-				stack.regs[i] = (argstack.Pop()).(Obj)
+				stack.regs[i] = argstack.Pop()
 			}
 			stack.cc = p
 			stack.argnum = argnum
@@ -374,7 +382,7 @@ func run(ct Obj, stack *Frame, argstack vector.Vector) Obj {
 			args := make([]Obj, argnum)
 			// fmt.Printf("primitive: %d, argnum: %d\nargs:",primitive,argnum)
 			for i := argnum-1; i >= 0; i-- {
-				args[i] = (argstack.Pop()).(Obj)
+				args[i] = argstack.Pop()
 				// Write(args[i])
 				// fmt.Printf(", ")
 			}
@@ -408,8 +416,9 @@ func aprun(proc *Procedure, args []Obj, ct Obj) Obj {
 	stack.argnum = len(args)
 	copy(stack.regs, args)
 	// stack_trace(stack)
+	argstack := make(Argstack, 16)
 
-	return run(ct, stack, nil)
+	return run(ct, stack, &argstack)
 }
 
 func stack_trace(stack *Frame) {

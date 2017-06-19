@@ -1,4 +1,4 @@
-// Copyright (C) 2011 Göran Weinholt <goran@weinholt.se>
+// Copyright (C) 2011, 2017 Göran Weinholt <goran@weinholt.se>
 // Copyright (C) 2011 Per Odlund <per.odlund@gmail.com>
 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,7 +22,7 @@
 package main
 
 import (
-	. "conscheme"
+	"github.com/weinholt/conscheme/vm"
 	"flag"
 	"fmt"
 	"os"
@@ -45,15 +45,15 @@ func usage() {
 	os.Exit(1)
 }
 
-func tryimage(fn string) (*Deserializer, os.Error) {
+func tryimage(fn string) (*vm.Deserializer, error) {
 	f, e := os.OpenFile(fn, os.O_RDONLY, 0666)
 	if e != nil { return nil, e }
-	d, e := NewReader(f)
+	d, e := vm.NewReader(f)
 	if e != nil { return nil, e }
 	return d, nil
 }
 
-func findimage() *Deserializer {
+func findimage() *vm.Deserializer {
 	var boot *string = flag.String("boot", "", "conscheme boot image file")
 	flag.Parse()
 	os.Args = flag.Args()
@@ -70,7 +70,7 @@ func findimage() *Deserializer {
 	dirs := conschemedirs
 	search := os.Getenv("CONSCHEMEDIRS")
 	if search != "" {
-		dirs = strings.Split(search, pathsep, -1)
+		dirs = strings.Split(search, pathsep)
 	}
 
 	for i := range(dirs) {
@@ -91,5 +91,5 @@ func main() {
 	code := d.ReadObject()
 	// Write(header)
 	// fmt.Print("\n")
-	Conscheme(header, code)
+	vm.Conscheme(header, code)
 }

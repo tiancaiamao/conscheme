@@ -1,4 +1,4 @@
-// Copyright (C) 2011 Göran Weinholt <goran@weinholt.se>
+// Copyright (C) 2011, 2017 Göran Weinholt <goran@weinholt.se>
 // Copyright (C) 2011 Per Odlund <per.odlund@gmail.com>
 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,10 +24,10 @@
 // TODO: the arithmetic procedures should return fixnums when fixnums
 // can represent the result, e.g. when two bignums are added.
 
-package conscheme
+package vm
 
 import (
-	"big"
+	"math/big"
 	"fmt"
 	"math"
 	"strings"
@@ -97,7 +97,7 @@ func number_p(x Obj) Obj {
 	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
 		return False
 	}
-	switch v := (*x).(type) {
+	switch (*x).(type) {
 	default: return False
 	case *big.Int:
 	case *big.Rat:
@@ -607,7 +607,7 @@ func _number_to_string(num Obj, radix Obj) Obj {
 // TODO: handle flonums, compnums, ratnums, etc
 func _string_to_number(_str Obj, _radix Obj) Obj {
 	if is_immediate(_str) { panic("bad type") }
-	str := string((*_str).([]int))
+	str := string((*_str).([]rune))
 
 	radix := number_to_int(_radix)
 	switch {

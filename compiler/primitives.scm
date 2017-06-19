@@ -1,5 +1,5 @@
 ;; -*- mode: scheme; coding: utf-8 -*-
-;; Copyright (C) 2011 Göran Weinholt <goran@weinholt.se>
+;; Copyright (C) 2011, 2017 Göran Weinholt <goran@weinholt.se>
 ;; Copyright (C) 2011 Per Odlund <per.odlund@gmail.com>
 
 ;; Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -219,7 +219,7 @@
                           "\tprimitive[" number "] = "
                           "wrap(&Procedure{name:\"" (symbol->string (car prim)) "\","
                           "required:" (number->string required) ","
-                          "apply:apprim,"
+                          "apply:nil,"
                           "label:" number
                           "})\n"))))
             *primitives*)

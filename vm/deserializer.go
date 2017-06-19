@@ -1,5 +1,5 @@
 // Copyright (C) 2011 Per Odlund <per.odlund@gmail.com>
-// Copyright (C) 2011 Göran Weinholt <goran@weinholt.se>
+// Copyright (C) 2011, 2017 Göran Weinholt <goran@weinholt.se>
 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,13 +21,13 @@
 
 // A simple deserializer for reading vm-code
 
-package conscheme
+package vm
 
 import (
 	"io"
-	"os"
+	"errors"
 	"fmt"
-	"big"
+	"math/big"
 	"encoding/binary"
 )
 
@@ -49,14 +49,12 @@ const (
 
 const Version = 1
 
-var HeaderError os.Error = os.ErrorString("wrong format on byte header")
-
 type Deserializer struct {
 	r io.Reader
 	version byte
 }
 
-func (d *Deserializer) readMagic() (os.Error) {
+func (d *Deserializer) readMagic() (error) {
 	s := "conscheme serialized object format\n"
 	buf := make([]byte, len (s))
 	_, e := io.ReadFull(d.r, buf)
@@ -64,7 +62,7 @@ func (d *Deserializer) readMagic() (os.Error) {
 		return e;
 	}
 	if s != string(buf) {
-		return HeaderError;
+		return errors.New("wrong format on byte header");
 	}
 	return nil
 }
@@ -156,13 +154,13 @@ func (d *Deserializer) ReadObject() Obj {
 		return Make_boolean(false)
 	case Char:
 		c := length.Int64()
-		return Make_char(int(c))
+		return Make_char(rune(c))
 	}
 	s := fmt.Sprintf("unknown tag: %v length: %v", tag, length)
 	panic(s)
 }
 
-func NewReader(r io.Reader) (*Deserializer, os.Error) {
+func NewReader(r io.Reader) (*Deserializer, error) {
 	d := new(Deserializer)
 	d.r = r
 	if e := d.readMagic(); e != nil {

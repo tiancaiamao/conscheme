@@ -1,4 +1,4 @@
-// Copyright (C) 2011 Göran Weinholt <goran@weinholt.se>
+// Copyright (C) 2011, 2017 Göran Weinholt <goran@weinholt.se>
 // Copyright (C) 2011 Per Odlund <per.odlund@gmail.com>
 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -39,13 +39,13 @@
 
 // Heap-allocated objects have these dynamic interface{} types:
 // []Obj        vector
-// []int        string
+// []rune       string
 // *[2]Obj      pair
 // *big.Int     bignum
 // *big.Rat     ratnum
 // string       symbol
 
-package conscheme
+package vm
 
 import (
 	"fmt"
@@ -97,12 +97,12 @@ func char_p(x Obj) Obj {
 	return Make_boolean((uintptr(unsafe.Pointer(x)) & char_mask) == char_tag)
 }
 
-func Make_char(x int) Obj {
+func Make_char(x rune) Obj {
 	return Obj(unsafe.Pointer(uintptr((x << char_shift) | char_tag)))
 }
 
-func char_to_int(x Obj) int {
-	return int(uintptr(unsafe.Pointer(x))) >> char_shift
+func char_to_int(x Obj) rune {
+	return rune(uintptr(unsafe.Pointer(x))) >> char_shift
 }
 
 func char_to_integer(x Obj) Obj {
@@ -116,7 +116,7 @@ func char_to_integer(x Obj) Obj {
 func integer_to_char(c Obj) Obj {
 	fx := number_to_int(c)
 	if (fx >= 0 && fx <= 0xd7ff) || (fx >= 0xe000 && fx <= 0x10ffff) {
-		return Make_char(fx)
+		return Make_char(rune(fx))
 	}
 	panic("codepoint is outside the unicode range")
 }
@@ -142,7 +142,7 @@ func not(x Obj) Obj {
 func pair_p(x Obj) Obj {
 	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { return False }
 
-	switch v := (*x).(type) {
+	switch (*x).(type) {
 	case *[2]Obj:
 		return True
 	}
@@ -236,7 +236,7 @@ func Floyd(x Obj) Obj {
 func vector_p(x Obj) Obj {
 	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { return False }
 
-	switch v := (*x).(type) {
+	switch (*x).(type) {
 	case []Obj:
 		return True
 	}
@@ -294,15 +294,15 @@ func Vector_set_ex(x,idx,value Obj) Obj {
 func string_p(x Obj) Obj {
 	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { return False }
 
-	switch v := (*x).(type) {
-	case []int:
+	switch (*x).(type) {
+	case []rune:
 		return True
 	}
 	return False
 }
 
 func String_string(s string) Obj {
-	rune := ([]int)(s)
+	rune := ([]rune)(s)
 	var vv interface{} = rune
 	return Obj(&vv)
 }
@@ -312,7 +312,7 @@ func Make_string(length,init Obj) Obj {
 		panic("bad type")
 	}
 	l := fixnum_to_int(length)
-	v := make([]int, fixnum_to_int(length))
+	v := make([]rune, fixnum_to_int(length))
 	init_c := char_to_int(init)
 
 	for i := 0; i < l; i++ {
@@ -326,7 +326,7 @@ func Make_string(length,init Obj) Obj {
 
 func String_length(x Obj) Obj {
 	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { panic("bad type") }
-	v := (*x).([]int)
+	v := (*x).([]rune)
 	return make_number(len(v))
 }
 
@@ -335,7 +335,7 @@ func String_ref(x, idx Obj) Obj {
 		(uintptr(unsafe.Pointer(idx)) & fixnum_mask) != fixnum_tag {
 		panic("bad type")
 	}
-	v := (*x).([]int)
+	v := (*x).([]rune)
 	return Make_char(v[fixnum_to_int(idx)])
 }
 
@@ -345,7 +345,7 @@ func String_set_ex(x,idx,ch Obj) Obj {
 		(uintptr(unsafe.Pointer(ch)) & char_mask) != char_tag {
 		panic("bad type")
 	}
-	v := (*x).([]int)
+	v := (*x).([]rune)
 	v[fixnum_to_int(idx)] = char_to_int(ch)
 	return Void
 }
@@ -363,7 +363,7 @@ func intern(x string) Obj {
 func symbol_p(x Obj) Obj {
 	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { return False }
 
-	switch v := (*x).(type) {
+	switch (*x).(type) {
 	case string:
 		return True
 	}
@@ -378,7 +378,7 @@ func getsym(str string) (Obj, bool) {
 
 func String_to_symbol(x Obj) Obj {
 	if is_immediate(x) { panic("bad type") }
-	str := string((*x).([]int))
+	str := string((*x).([]rune))
 	sym, is_interned := getsym(str)
 	if is_interned { return sym }
 	// Intern the new symbol
@@ -394,7 +394,7 @@ func Symbol_to_string(x Obj) Obj {
 		return Void
 	}
 	v := (*x).(string)
-	str := ([]int)(v)
+	str := ([]rune)(v)
 	var stri interface{} = str
 	return Obj(&stri)
 }
@@ -404,7 +404,7 @@ func Symbol_to_string(x Obj) Obj {
 func Obj_display(x Obj, p io.Writer, write Obj) {
 	switch {
 	case number_p(x) != False:
-		str := string((*_number_to_string(x,Make_fixnum(10))).([]int))
+		str := string((*_number_to_string(x,Make_fixnum(10))).([]rune))
 		fmt.Fprintf(p, "%v", str)
 	case char_p(x) != False:
 		if write != False {
@@ -433,7 +433,7 @@ func Obj_display(x Obj, p io.Writer, write Obj) {
 		// XXX: doesn't handle \n, etc
 		if write != False { fmt.Fprintf(p, "\"") }
 		length := fixnum_to_int(String_length(x))
-		s := (*x).([]int)
+		s := (*x).([]rune)
 		for i := 0; i < length; i++ {
 			fmt.Fprintf(p, "%c", s[i])
 		}

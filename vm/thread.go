@@ -1,4 +1,4 @@
-// Copyright (C) 2011 Göran Weinholt <goran@weinholt.se>
+// Copyright (C) 2011, 2017 Göran Weinholt <goran@weinholt.se>
 // Copyright (C) 2011 Per Odlund <per.odlund@gmail.com>
 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,7 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-package conscheme
+package vm
 
 import (
 	"container/list"
@@ -58,7 +58,7 @@ func _make_thread(thunk, name Obj) Obj {
 
 func thread_p(thread Obj) Obj {
 	if is_immediate(thread) { return False }
-	switch v := (*thread).(type) {
+	switch (*thread).(type) {
 	case *Thread: return True
 	}
 	return False
