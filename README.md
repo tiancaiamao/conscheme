@@ -25,7 +25,9 @@ To run Conscheme you need a compiler for the Go language and a
 workspace. Follow the instructions at http://golang.org/. Then build
 the virtual machine:
 
-  $ go install github.com/weinholt/conscheme
+```
+$ go install github.com/weinholt/conscheme
+```
 
 This will install the github.com/weinholt/conscheme package and the
 conscheme binary in the workspace. These contain a virtual machine and
@@ -48,14 +50,18 @@ send procedure currently doesn't guarantee relative message ordering.
 
 Build the VM and ensure that you can start the pre-built image:
 
-  $ go build
-  $ ./conscheme -boot compiler/conscheme.image.pre-built
+```
+$ go build
+$ ./conscheme -boot compiler/conscheme.image.pre-built
+```
 
 You should now see a Scheme REPL. To build your own image file, run
 these commands:
 
-  $ cd compiler/
-  $ ../conscheme -boot conscheme.image.pre-built bytecode-compile
+```
+$ cd compiler/
+$ ../conscheme -boot conscheme.image.pre-built bytecode-compile
+```
 
 It might take a minute to run the compiler. The new image is now in
 conscheme.image and you no longer need to give the -boot parameter.
@@ -66,10 +72,14 @@ Whenever you add new primitive procedures you need to regenerate
 vm/primitives.go and recompile the conscheme package. This can be done
 this way:
 
+```
 $ ../conscheme genprim
+```
 
 Conscheme can also be built by running the compiler in another Scheme.
 During development we used GNU Guile 2.0. You might use this command
 to build conscheme.image with Guile:
 
+```
 $ guile ./main.scm bytecode-compile
+```
