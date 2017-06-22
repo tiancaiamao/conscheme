@@ -89,7 +89,7 @@ func main() {
 	}
 	header := d.ReadObject()
 	code := d.ReadObject()
-	// Write(header)
+	// vm.Write(header)
 	// fmt.Print("\n")
 	vm.Conscheme(header, code)
 }

@@ -21,29 +21,18 @@
 
 // Basic definitions of Scheme object types and a few primitives
 
-// All Scheme objects have type Obj. The two low bits in pointers are
-// used to get limited type tagging. Normally one would want the tag
-// '00' for fixnums, because it simplifies arithmetic, but we have to
-// use '00' for heap-allocated objects, or else the GC will deallocate
-// all our objects.
+// All Scheme objects have type Obj.
 
-// bits         purpose
-// x....x00     heap-allocated object
-// x....x01     fixnum
-//       10     (unused)
-//     x011     boolean
-// x..x0111     character
-//   001111     empty list
-//   011111     end of file object
-//   101111     void
-
-// Heap-allocated objects have these dynamic interface{} types:
+// Objects have these dynamic interface{} types:
 // []Obj        vector
 // []rune       string
 // *[2]Obj      pair
 // *big.Int     bignum
 // *big.Rat     ratnum
 // string       symbol
+// bool         boolean
+// int          fixnum
+// ScmChar      char
 
 package vm
 
@@ -52,65 +41,53 @@ import (
 	"io"
 	"os"
 	"sync"
-	"unsafe"
 )
 
-// Tags
-const heap_tag = 0
-const heap_mask = 0x3
-
-const fixnum_tag = 1
-const fixnum_mask = 0x3
-const fixnum_shift = 2
-
-const bool_shift = 3
-const bool_tag = 0x3
-const bool_mask = 0x7
-
-const char_tag = 7
-const char_mask = 0xf
-const char_shift = 4
-
 // The type of all Scheme objects.
-type Obj *interface{}
+type Obj interface{}
 
 func wrap(x interface{}) Obj {
-	return Obj(&x)
+	return Obj(x)
 }
 
-func is_immediate(x Obj) bool {
-	return (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag
+type SuiGeneris struct {
+	repr string
+}
+
+type ScmChar struct {
+	codepoint rune
 }
 
 // Constants.
-const (
-	False = Obj(unsafe.Pointer(uintptr((0 << bool_shift) | bool_tag)))
-	True = Obj(unsafe.Pointer(uintptr((1 << bool_shift) | bool_tag)))
-	Eol = Obj(unsafe.Pointer(uintptr(0x0f))) // empty list
-	Eof = Obj(unsafe.Pointer(uintptr(0x1f))) // end of file object
-	Void = Obj(unsafe.Pointer(uintptr(0x2f)))	// the unspecified value
+var (
+	False = Obj(false)
+	True = Obj(true)
+	Eol = Obj(SuiGeneris{"()"})	  // empty list
+	Eof = Obj(SuiGeneris{"#<eof>"})   // end of file object
+	Void = Obj(SuiGeneris{"#<void>"}) // the unspecified value
 )
 
 // Chars
 
 func char_p(x Obj) Obj {
-	return Make_boolean((uintptr(unsafe.Pointer(x)) & char_mask) == char_tag)
+	switch (x).(type) {
+	default:
+		return False
+	case ScmChar:
+		return True
+	}
 }
 
 func Make_char(x rune) Obj {
-	return Obj(unsafe.Pointer(uintptr((x << char_shift) | char_tag)))
+	return ScmChar{x}
 }
 
 func char_to_int(x Obj) rune {
-	return rune(uintptr(unsafe.Pointer(x))) >> char_shift
+	return (x).(ScmChar).codepoint
 }
 
 func char_to_integer(x Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & char_mask) != char_tag { panic("Bad type") }
-
-	ch := uintptr(unsafe.Pointer(x)) >> char_shift
-	fx := (ch << fixnum_shift) | fixnum_tag
-	return Obj(unsafe.Pointer(uintptr(fx)))
+	return int((x).(ScmChar).codepoint)
 }
 
 func integer_to_char(c Obj) Obj {
@@ -124,7 +101,11 @@ func integer_to_char(c Obj) Obj {
 // Booleans
 
 func boolean_p(x Obj) Obj {
-	return Make_boolean((uintptr(unsafe.Pointer(x)) & bool_mask) == bool_tag)
+	switch (x).(type) {
+	case bool:
+		return True
+	}
+	return False
 }
 
 func Make_boolean(x bool) Obj {
@@ -140,9 +121,7 @@ func not(x Obj) Obj {
 // Pairs
 
 func pair_p(x Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { return False }
-
-	switch (*x).(type) {
+	switch (x).(type) {
 	case *[2]Obj:
 		return True
 	}
@@ -155,31 +134,27 @@ func Cons(x,y Obj) Obj {
 	v[1] = y
 
 	var vi interface{} = &v
-	return Obj(&vi)
+	return Obj(vi)
 }
 
 func car(x Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { panic("bad type") }
-	v := (*x).(*[2]Obj)
+	v := (x).(*[2]Obj)
 	return v[0]
 }
 
 func cdr(x Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { panic("bad type") }
-	v := (*x).(*[2]Obj)
+	v := (x).(*[2]Obj)
 	return v[1]
 }
 
-func set_car_ex(x,value Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { panic("bad type") }
-	v := (*x).(*[2]Obj)
+func set_car_ex(x, value Obj) Obj {
+	v := (x).(*[2]Obj)
 	v[0] = value
 	return Void
 }
 
 func set_cdr_ex(x,value Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { panic("bad type") }
-	v := (*x).(*[2]Obj)
+	v := (x).(*[2]Obj)
 	v[1] = value
 	return Void
 }
@@ -195,10 +170,7 @@ func set_cdr_ex(x,value Obj) Obj {
 func Length(x Obj) Obj {
 	var i int
 	for i = 0; x != Eol; i++ {
-		if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
-			panic("not a list")
-		}
-		v := (*x).(*[2]Obj)
+		v := (x).(*[2]Obj)
 		x = v[1]
 	}
 	return make_number(i)
@@ -234,9 +206,7 @@ func Floyd(x Obj) Obj {
 // Vectors
 
 func vector_p(x Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { return False }
-
-	switch (*x).(type) {
+	switch (x).(type) {
 	case []Obj:
 		return True
 	}
@@ -245,7 +215,7 @@ func vector_p(x Obj) Obj {
 
 func _vector(v ...Obj) Obj {
 	var vi interface{} = v
-	return Obj(&vi)
+	return Obj(vi)
 }
 
 func Make_vector(length,init Obj) Obj {
@@ -259,32 +229,21 @@ func Make_vector(length,init Obj) Obj {
 		v[i] = init
 	}
 
-	var vi interface{} = v
-
-	return Obj(&vi)
+	return v
 }
 
 func vector_length(x Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { panic("bad type") }
-	v := (*x).([]Obj)
+	v := (x).([]Obj)
 	return make_number(len(v))
 }
 
 func Vector_ref(x,idx Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag ||
-		(uintptr(unsafe.Pointer(idx)) & fixnum_mask) != fixnum_tag {
-		panic("bad type")
-	}
-	v := (*x).([]Obj)
+	v := (x).([]Obj)
 	return v[fixnum_to_int(idx)]
 }
 
 func Vector_set_ex(x,idx,value Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag ||
-		(uintptr(unsafe.Pointer(idx)) & fixnum_mask) != fixnum_tag {
-		panic("bad type")
-	}
-	v := (*x).([]Obj)
+	v := (x).([]Obj)
 	v[fixnum_to_int(idx)] = value
 	return Void
 }
@@ -292,9 +251,7 @@ func Vector_set_ex(x,idx,value Obj) Obj {
 // Strings
 
 func string_p(x Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { return False }
-
-	switch (*x).(type) {
+	switch (x).(type) {
 	case []rune:
 		return True
 	}
@@ -302,9 +259,9 @@ func string_p(x Obj) Obj {
 }
 
 func String_string(s string) Obj {
-	rune := ([]rune)(s)
-	var vv interface{} = rune
-	return Obj(&vv)
+	// rune := ([]rune)(s)
+	// var vv interface{} = rune
+	return ([]rune)(s)
 }
 
 func Make_string(length,init Obj) Obj {
@@ -319,33 +276,21 @@ func Make_string(length,init Obj) Obj {
 		v[i] = init_c
 	}
 
-	var vi interface{} = v
-
-	return Obj(&vi)
+	return v
 }
 
 func String_length(x Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { panic("bad type") }
-	v := (*x).([]rune)
+	v := (x).([]rune)
 	return make_number(len(v))
 }
 
 func String_ref(x, idx Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag ||
-		(uintptr(unsafe.Pointer(idx)) & fixnum_mask) != fixnum_tag {
-		panic("bad type")
-	}
-	v := (*x).([]rune)
+	v := (x).([]rune)
 	return Make_char(v[fixnum_to_int(idx)])
 }
 
 func String_set_ex(x,idx,ch Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag ||
-		(uintptr(unsafe.Pointer(idx)) & fixnum_mask) != fixnum_tag ||
-		(uintptr(unsafe.Pointer(ch)) & char_mask) != char_tag {
-		panic("bad type")
-	}
-	v := (*x).([]rune)
+	v := (x).([]rune)
 	v[fixnum_to_int(idx)] = char_to_int(ch)
 	return Void
 }
@@ -361,9 +306,7 @@ func intern(x string) Obj {
 }
 
 func symbol_p(x Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag { return False }
-
-	switch (*x).(type) {
+	switch (x).(type) {
 	case string:
 		return True
 	}
@@ -377,8 +320,7 @@ func getsym(str string) (Obj, bool) {
 }
 
 func String_to_symbol(x Obj) Obj {
-	if is_immediate(x) { panic("bad type") }
-	str := string((*x).([]rune))
+	str := string((x).([]rune))
 	sym, is_interned := getsym(str)
 	if is_interned { return sym }
 	// Intern the new symbol
@@ -391,12 +333,10 @@ func String_to_symbol(x Obj) Obj {
 func Symbol_to_string(x Obj) Obj {
 	if symbol_p(x) == False {
 		panic("bad type")
-		return Void
 	}
-	v := (*x).(string)
-	str := ([]rune)(v)
-	var stri interface{} = str
-	return Obj(&stri)
+	v := (x).(string)
+
+	return ([]rune)(v)
 }
 
 // Object printer (for debugging)
@@ -404,7 +344,7 @@ func Symbol_to_string(x Obj) Obj {
 func Obj_display(x Obj, p io.Writer, write Obj) {
 	switch {
 	case number_p(x) != False:
-		str := string((*_number_to_string(x,Make_fixnum(10))).([]rune))
+		str := string((_number_to_string(x,Make_fixnum(10))).([]rune))
 		fmt.Fprintf(p, "%v", str)
 	case char_p(x) != False:
 		if write != False {
@@ -433,7 +373,7 @@ func Obj_display(x Obj, p io.Writer, write Obj) {
 		// XXX: doesn't handle \n, etc
 		if write != False { fmt.Fprintf(p, "\"") }
 		length := fixnum_to_int(String_length(x))
-		s := (*x).([]rune)
+		s := (x).([]rune)
 		for i := 0; i < length; i++ {
 			fmt.Fprintf(p, "%c", s[i])
 		}
@@ -464,13 +404,13 @@ func Obj_display(x Obj, p io.Writer, write Obj) {
 	case x == Void:
 		fmt.Fprintf(p, "#<void>")
 	case procedure_p(x) != False:
-		proc := (*x).(*Procedure)
+		proc := (x).(*Procedure)
 		fmt.Fprintf(p, "#<procedure %s>",proc.name)
 	case port_p(x) != False:
 		display_port(p, x)
 	case bytevector_p(x) != False:
 		fmt.Fprintf(p, "#vu8(")
-		bv := (*x).([]byte)
+		bv := (x).([]byte)
 		for i := 0; i < len(bv); i++ {
 			if i > 0 { fmt.Fprintf(p, " ") }
 			fmt.Fprintf(p, "%d", bv[i])
@@ -478,14 +418,12 @@ func Obj_display(x Obj, p io.Writer, write Obj) {
 		fmt.Fprintf(p, ")")
 	case thread_p(x) != False:
 		fmt.Fprintf(p, "#<thread ")
-		t := (*x).(*Thread)
+		t := (x).(*Thread)
 		Obj_display(t.name, p, write)
 		fmt.Fprintf(p, ">")
 	// Unknown types
-	case uintptr(unsafe.Pointer(x)) & heap_mask == heap_tag:
-		fmt.Fprintf(p, "#<heapobj %d>", *x)
 	default:
-		fmt.Fprintf(p, "#<immobj %x>", x)
+		fmt.Fprintf(p, "#<obj %x>", x)
 	}
 }
 

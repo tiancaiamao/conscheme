@@ -88,7 +88,7 @@ func Conscheme(header, code Obj) Obj {
 		prop := car(h)
 		name := car(prop)
 		value := cdr(prop)
-		if (*name).(string) == "bytecode" {
+		if (name).(string) == "bytecode" {
 			version = number_to_int(value)
 			break
 		}
@@ -126,8 +126,7 @@ type Procedure struct {
 }
 
 func procedure_p(x Obj) Obj {
-	if is_immediate(x) { return False }
-	switch (*x).(type) {
+	switch (x).(type) {
 	case *Procedure:
 		return True
 	}
@@ -190,7 +189,7 @@ func tail_frame(f *Frame, n int) {
 
 func _bytecode_run(bytecode, constants, current_thread Obj) Obj {
 	// The bytecode is 32-bit integers encoded in little endian format
-	_bc := (*bytecode).([]byte)
+	_bc := (bytecode).([]byte)
 	bc := make([]uint32, len(_bc) / 4)
 	rbc := bytes.NewBuffer(_bc)
 
@@ -209,7 +208,7 @@ func _bytecode_run(bytecode, constants, current_thread Obj) Obj {
 	// This means that primitives need access to the stack. That
 	// will also be useful for apply and call/cc.
 	return run(current_thread,
-		start_frame(int(i & OP1_R2), &Code{bc, (*constants).([]Obj)}),
+		start_frame(int(i & OP1_R2), &Code{bc, (constants).([]Obj)}),
 		&argstack)
 }
 
@@ -272,12 +271,11 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 			f := make([]Obj, (i & OP1_N) >> OP1_N_SHIFT)
 			stack.regs[i & OP1_R2] = wrap(&Procedure{apply: aprun, free: f, code: stack.code})
 		case CLOSURE_NAME:
-			p := (*stack.regs[i & OP1_R2]).(*Procedure)
+			p := (stack.regs[i & OP1_R2]).(*Procedure)
 			name := stack.regs[(i & OP1_R1)>>OP1_R1_SHIFT]
-			if is_immediate(name) { continue }
-			p.name = (*name).(string)
+			p.name = (name).(string)
 		case CLOSURE_VAR:
-			p := (*stack.regs[i & OP1_R2]).(*Procedure)
+			p := (stack.regs[i & OP1_R2]).(*Procedure)
 			value := stack.regs[(i & OP1_R1)>>OP1_R1_SHIFT]
 			freevar := (i & OP1_N) >> OP1_N_SHIFT
 			p.free[freevar] = value
@@ -290,8 +288,7 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 			r := int(i & OP1_R2)
 			argnum := int((i & OP1_N) >> OP1_N_SHIFT)
 			_p := stack.regs[(i & OP1_R1) >> OP1_R1_SHIFT]
-			if is_immediate(_p) { panic("Bad type to apply") }
-			p := (*_p).(*Procedure)
+			p := (_p).(*Procedure)
 			if p.apply == nil {
 				// This is a primitive.
 				args := make([]Obj, argnum)
@@ -320,8 +317,7 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 		case TAILCALL:
 			argnum := int((i & OP1_N) >> OP1_N_SHIFT)
 			_p := stack.regs[i & OP1_R2]
-			if is_immediate(_p) { panic("Bad type to apply") }
-			p := (*_p).(*Procedure)
+			p := (_p).(*Procedure)
 			dst_i := p.code.bc[p.label]
 			if (dst_i >> I_SHIFT) != FRAME {
 				panic(fmt.Sprintf("Procedure at #x%x has no FRAME: #x%x",
@@ -358,7 +354,7 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 		case CONST_REF:
 			stack.regs[i & OP2_R] = stack.code.consts[(i & OP2_N) >> OP2_N_SHIFT]
 		case CLOSURE_LABEL:
-			p := (*stack.regs[i & OP2_R]).(*Procedure)
+			p := (stack.regs[i & OP2_R]).(*Procedure)
 			disp := (i & OP2_N) >> OP2_N_SHIFT
 			// convert to signed:
 			// fmt.Printf("CLOSURE LABEL DISPLACEMENT: %x = %x = %x\n",

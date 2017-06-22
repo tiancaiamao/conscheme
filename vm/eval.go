@@ -22,10 +22,6 @@
 
 package vm
 
-import (
-	"fmt"
-)
-
 func apprim(proc *Procedure, args []Obj, ct Obj) Obj {
 	// XXX: should also check if there's a maximum number of
 	// arguments, like e.g. make-string
@@ -37,10 +33,7 @@ func apprim(proc *Procedure, args []Obj, ct Obj) Obj {
 
 func ap(oproc Obj, args []Obj, ct Obj) Obj {
 	// oproc should be a Procedure.
-	if is_immediate(oproc) {
-		panic(fmt.Sprintf("bad type to apply: %v",oproc))
-	}
-	proc := (*oproc).(*Procedure)
+	proc := (oproc).(*Procedure)
 	return proc.apply(proc, args, ct)
 }
 

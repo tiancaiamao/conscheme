@@ -106,8 +106,7 @@ func (d *Deserializer) ReadObject() Obj {
 	switch tag {
 	case Integer:
 		if length.Cmp(fixnum_min_Int)<0 || length.Cmp(fixnum_max_Int)>0 {
-			var vv interface{} = length
-			return Obj(&vv)
+			return length
 		}
 		return Make_fixnum(int(length.Int64()))
 	case Rational:

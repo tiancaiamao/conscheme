@@ -57,45 +57,38 @@ func _make_thread(thunk, name Obj) Obj {
 }
 
 func thread_p(thread Obj) Obj {
-	if is_immediate(thread) { return False }
-	switch (*thread).(type) {
+	switch (thread).(type) {
+	default: return False
 	case *Thread: return True
 	}
-	return False
 }
 
 func thread_name(thread Obj) Obj {
-	if is_immediate(thread) { panic("bad type") }
-	t := (*thread).(*Thread)
+	t := (thread).(*Thread)
 	return t.name
 }
 
 func thread_specific(thread Obj) Obj {
-	if is_immediate(thread) { panic("bad type") }
-	t := (*thread).(*Thread)
+	t := (thread).(*Thread)
 	return t.specific
 }
 
 func thread_specific_set_ex(thread, v Obj) Obj {
-	if is_immediate(thread) { panic("bad type") }
-	t := (*thread).(*Thread)
+	t := (thread).(*Thread)
 	t.specific = v
 	return Void
 }
 
 func thread_queue(thread Obj) Obj {
-	if is_immediate(thread) { panic("bad type") }
-	t := (*thread).(*Thread)
+	t := (thread).(*Thread)
 	return t.queue
 }
 
 func thread_queue_set_ex(thread, v Obj) Obj {
-	if is_immediate(thread) { panic("bad type") }
-	t := (*thread).(*Thread)
+	t := (thread).(*Thread)
 	t.queue = v
 	return Void
 }
-
 
 func thread_yield_ex() Obj {
 	runtime.Gosched()
@@ -103,15 +96,13 @@ func thread_yield_ex() Obj {
 }
 
 func thread_link_ex(_t1, _t2 Obj) Obj {
-	if is_immediate(_t1) || is_immediate(_t2) { panic("bad type") }
-	t1 := (*_t1).(*Thread)
+	t1 := (_t1).(*Thread)
 	t1.links.PushFront(_t2)
 	return Void
 }
 
 func send(thread, o Obj) Obj {
-	if is_immediate(thread) { panic("bad type") }
-	t := (*thread).(*Thread)
+	t := (thread).(*Thread)
 	go func(t *Thread, o Obj){
 		t.channel <- o
 	}(t, o)
@@ -119,14 +110,12 @@ func send(thread, o Obj) Obj {
 }
 
 func _receive(thread Obj) Obj {
-	if is_immediate(thread) { panic("bad type") }
-	t := (*thread).(*Thread)
+	t := (thread).(*Thread)
 	return <- t.channel
 }
 
 func thread_start_ex(thread Obj) Obj {
-	if is_immediate(thread) { panic("bad type") }
-	t := (*thread).(*Thread)
+	t := (thread).(*Thread)
 
 	go t.once.Do(func () {
 		defer func() {

@@ -201,29 +201,29 @@ func evprimn(primop uint32, args []Obj, ct Obj) Obj {
 	case 58: // $global-set!
 		name := args[0]
 		value := args[1]
-		sname := (*name).(string)
+		sname := (name).(string)
 		env[sname] = value
 		return Void
 	case 57: // $global-ref
 		name := args[0]
-		sname := (*name).(string)
+		sname := (name).(string)
 		v, def := env[sname]
 		if !def { panic(fmt.Sprintf("undefined top-level variable: %s",sname)) }
 		return v
 	case 56: // $cell-set!
 		v := args[0]
-		vv := (*v).(*[1]Obj)
+		vv := (v).(*[1]Obj)
 		vv[0] = args[1]
 		return Void
 	case 55: // $cell-ref
 		v := args[0]
-		vv := (*v).(*[1]Obj)
+		vv := (v).(*[1]Obj)
 		return vv[0]
 	case 54: // $make-cell
 		var v [1]Obj
 		v[0] = args[0]
 		var vv interface{} = &v
-		return Obj(&vv)
+		return Obj(vv)
 	case 53: // $bytecode-run
 		return _bytecode_run(args[0], args[1], args[2])
 	case 52: // command-line

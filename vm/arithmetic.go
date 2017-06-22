@@ -31,11 +31,10 @@ import (
 	"fmt"
 	"math"
 	"strings"
-	"unsafe"
 )
 
 const (
-	fixnum_max = int(^uint(0) >> (1 + fixnum_shift))
+	fixnum_max = int(^uint(0) >> 1)
 	fixnum_min = -fixnum_max - 1
 )
 
@@ -53,16 +52,20 @@ type Compnum struct {
 }
 
 func fixnum_p(x Obj) Obj {
-	return Make_boolean((uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag)
+	switch (x).(type) {
+	case int:
+		return True
+	default:
+		return False
+	}
 }
 
 func Make_fixnum(x int) Obj {
-	// XXX: assumes x fits in a fixnum
-	return Obj(unsafe.Pointer(uintptr((x << fixnum_shift) | fixnum_tag)))
+	return x
 }
 
 func fixnum_to_int(x Obj) int {
-	return int(uintptr(unsafe.Pointer(x))) >> fixnum_shift
+	return x.(int)
 }
 
 func make_number(x int) Obj {
@@ -74,15 +77,11 @@ func make_number(x int) Obj {
 }
 
 func number_to_int(x Obj) int {
-	if (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag {
+	if fixnum_p(x) == True {
 		return fixnum_to_int(x)
 	}
 
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
-		panic("bad type")
-	}
-
-	switch v := (*x).(type) {
+	switch v := (x).(type) {
 	case *big.Int:
 		// XXX:
 		return int(v.Int64())
@@ -91,14 +90,9 @@ func number_to_int(x Obj) int {
 }
 
 func number_p(x Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag {
-		return True
-	}
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
-		return False
-	}
-	switch (*x).(type) {
+	switch (x).(type) {
 	default: return False
+	case int:
 	case *big.Int:
 	case *big.Rat:
 	case float64:
@@ -109,32 +103,21 @@ func number_p(x Obj) Obj {
 }
 
 func integer_p(x Obj) Obj {
-	if (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag {
-		return True
-	}
-	if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
-		return False
-	}
-	switch v := (*x).(type) {
+	switch v := (x).(type) {
 	default: return False
+	case int:
+		return True
 	case *big.Int:
 		return True
 	case float64:
 		return Make_boolean(v == math.Floor(v))
 	}
-	return False
 }
 
 func denominator(num Obj) Obj {
-	if (uintptr(unsafe.Pointer(num)) & fixnum_mask) == fixnum_tag {
+	switch n := (num).(type) {
+	case int:
 		return Make_fixnum(1)
-	}
-
-	if (uintptr(unsafe.Pointer(num)) & heap_mask) != heap_tag {
-		panic("bad type")
-	}
-
-	switch n := (*num).(type) {
 	case *big.Int:
 		return Make_fixnum(1)
 	case *big.Rat:
@@ -149,11 +132,11 @@ func denominator(num Obj) Obj {
 
 
 // func number_equal(x,y Obj) Obj {
-// 	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
-// 	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+// 	xfx := fixnum_p(x) == True
+//   	yfx := fixnum_p(y) == True
 // 	if xfx && yfx {	return Make_boolean(x == y) }
 
-// 	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
+// 	if (!xfx && (fixnum_to_int(x) & heap_mask) != heap_tag) ||
 // 		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
 // 		panic("bad type")
 // 	}
@@ -191,34 +174,31 @@ func denominator(num Obj) Obj {
 // }
 
 func number_add(x,y Obj) Obj {
-	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
-	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	xfx := fixnum_p(x) == True
+	yfx := fixnum_p(y) == True
 	if xfx && yfx {
-		i1 := uintptr(unsafe.Pointer(x))
-		i2 := uintptr(unsafe.Pointer(y))
-		r := (int(i1) >> fixnum_shift) + (int(i2) >> fixnum_shift)
-		if r > fixnum_min && r < fixnum_max {
-			return Make_fixnum(r)
+		i1 := fixnum_to_int(x)
+		i2 := fixnum_to_int(y)
+		r := i1 + i2
+		if ((r < i1) != (i2 < 0)) {
+			var b1 *big.Int = big.NewInt(int64(i1))
+			var b2 *big.Int = big.NewInt(int64(i2))
+			return wrap(b1.Add(b1, b2))
 		} else {
-			return wrap(big.NewInt(int64(r)))
+			return Make_fixnum(r)
 		}
-	}
-
-	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
-		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
-		panic("bad type")
 	}
 
 	if xfx { return number_add(y,x) }
 
-	switch vx := (*x).(type) {
+	switch vx := (x).(type) {
 	case *big.Int:
 		var z *big.Int = big.NewInt(0)
 		if yfx {
 			vy := big.NewInt(int64(fixnum_to_int(y)))
 			return wrap(z.Add(vx,vy))
 		}
-		switch vy := (*y).(type) {
+		switch vy := (y).(type) {
 		case *big.Int:
 			return simpBig(z.Add(vx,vy))
 		default:
@@ -229,22 +209,19 @@ func number_add(x,y Obj) Obj {
 }
 
 func number_subtract(x,y Obj) Obj {
-	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
-	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	xfx := fixnum_p(x) == True
+	yfx := fixnum_p(y) == True
 	if xfx && yfx {
-		i1 := uintptr(unsafe.Pointer(x))
-		i2 := uintptr(unsafe.Pointer(y))
-		r := (int(i1) >> fixnum_shift) - (int(i2) >> fixnum_shift)
-		if r >= fixnum_min && r <= fixnum_max {
+		i1 := fixnum_to_int(x)
+		i2 := fixnum_to_int(y)
+		r := i1 - i2
+		if r >= fixnum_min && r <= fixnum_max { // XXX: invalid overflow check
 			return Make_fixnum(r)
 		} else {
-			return wrap(big.NewInt(int64(r)))
+			var b1 *big.Int = big.NewInt(int64(i1))
+			var b2 *big.Int = big.NewInt(int64(i2))
+			return wrap(b1.Sub(b1, b2))
 		}
-	}
-
-	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
-		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
-		panic("bad type")
 	}
 
 	if xfx {
@@ -254,10 +231,10 @@ func number_subtract(x,y Obj) Obj {
 		y = wrap(big.NewInt(int64(fixnum_to_int(y))))
 	}
 
-	switch vx := (*x).(type) {
+	switch vx := (x).(type) {
 	case *big.Int:
 		var z *big.Int = big.NewInt(0)
-		switch vy := (*y).(type) {
+		switch vy := (y).(type) {
 		case *big.Int:
 			return simpBig(z.Sub(vx,vy))
 		default:
@@ -268,24 +245,17 @@ func number_subtract(x,y Obj) Obj {
 }
 
 func number_divide(x,y Obj) Obj {
-	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
-	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	xfx := fixnum_p(x) == True
+	yfx := fixnum_p(y) == True
 	if xfx && yfx {
-		i1 := int(uintptr(unsafe.Pointer(x))) >> fixnum_shift
-		i2 := int(uintptr(unsafe.Pointer(y))) >> fixnum_shift
-		// A good optimizer will combine the div and mod into
-		// one instruction.
+		i1 := fixnum_to_int(x)
+		i2 := fixnum_to_int(y)
 		r, m := i1 / i2, i1 % i2
 		if m == 0 && r > fixnum_min && r < fixnum_max {
 			return Make_fixnum(r)
 		} else {
 			return wrap(big.NewRat(int64(i1),int64(i2)))
 		}
-	}
-
-	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
-		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
-		panic("bad type")
 	}
 
 	if xfx {
@@ -296,10 +266,10 @@ func number_divide(x,y Obj) Obj {
 		//return wrap(z.Div(vx,vy))
 	}
 
-	switch vx := (*x).(type) {
+	switch vx := (x).(type) {
 	case *big.Int:
 		var z *big.Int = big.NewInt(0)
-		switch vy := (*y).(type) {
+		switch vy := (y).(type) {
 		case *big.Int:
 			return simpBig(z.Div(vx,vy))
 		case *big.Rat:
@@ -311,7 +281,7 @@ func number_divide(x,y Obj) Obj {
 		}
 	case *big.Rat:
 		z := big.NewRat(1,1)
-		switch vy := (*y).(type) {
+		switch vy := (y).(type) {
 		case *big.Int:
 			z.SetInt(vy)
 			return simpRat(z.Quo(vx,z))
@@ -337,22 +307,17 @@ func simpBig(x *big.Int) Obj {
 }
 
 func number_multiply(x, y Obj) Obj {
-	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
-	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	xfx := fixnum_p(x) == True
+	yfx := fixnum_p(y) == True
 	if xfx && yfx {
-		i1 := int64(int(uintptr(unsafe.Pointer(x))))
-		i2 := int64(int(uintptr(unsafe.Pointer(y))))
-		r := (i1 >> fixnum_shift) * (i2 >> fixnum_shift)
-		if r > int64(fixnum_min) && r < int64(fixnum_max) {
+		i1 := int64(fixnum_to_int(x))
+		i2 := int64(fixnum_to_int(y))
+		r := i1 * i2
+		if r > int64(fixnum_min) && r < int64(fixnum_max) { // XXX: invalid overflow check
 			return Make_fixnum(int(r))
 		} else {
 			return wrap(big.NewInt(r))
 		}
-	}
-
-	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
-		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
-		panic("bad type")
 	}
 
 	if xfx {
@@ -362,10 +327,10 @@ func number_multiply(x, y Obj) Obj {
 		y = wrap(big.NewInt(int64(fixnum_to_int(y))))
 	}
 
-	switch vx := (*x).(type) {
+	switch vx := (x).(type) {
 	case *big.Int:
 		var z *big.Int = big.NewInt(0)
-		switch vy := (*y).(type) {
+		switch vy := (y).(type) {
 		case *big.Int:
 			return simpBig(z.Mul(vx,vy))
 		case *big.Rat:
@@ -377,7 +342,7 @@ func number_multiply(x, y Obj) Obj {
 		}
 	case *big.Rat:
 		z := big.NewRat(1,1)
-		switch vy := (*y).(type) {
+		switch vy := (y).(type) {
 		case *big.Int:
 			z.SetInt(vy)
 			return simpRat(z.Mul(vx,z))
@@ -391,11 +356,11 @@ func number_multiply(x, y Obj) Obj {
 
 
 func number_cmp(x,y Obj) Obj {
-	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
-	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	xfx := fixnum_p(x) == True
+	yfx := fixnum_p(y) == True
 	if xfx && yfx {
-		i1 := int(uintptr(unsafe.Pointer(x))) >> fixnum_shift
-		i2 := int(uintptr(unsafe.Pointer(y))) >> fixnum_shift
+		i1 := fixnum_to_int(x)
+		i2 := fixnum_to_int(y)
 		switch {
 		case i1 > i2: return Make_fixnum(1)
 		case i1 < i2: return Make_fixnum(-1)
@@ -403,20 +368,15 @@ func number_cmp(x,y Obj) Obj {
 		}
 	}
 
-	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
-		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
-		panic("bad type")
-	}
-
 	if xfx { return number_subtract(y,x) }
 
-	switch vx := (*x).(type) {
+	switch vx := (x).(type) {
 	case *big.Int:
 		if yfx {
 			vy := big.NewInt(int64(fixnum_to_int(y)))
 			return Make_fixnum(vx.Cmp(vy))
 		}
-		switch vy := (*y).(type) {
+		switch vy := (y).(type) {
 		case *big.Int:
 			return Make_fixnum(vx.Cmp(vy))
 		case *big.Rat:
@@ -432,7 +392,7 @@ func number_cmp(x,y Obj) Obj {
 			vy := big.NewRat(int64(fixnum_to_int(y)), 1)
 			return Make_fixnum(vx.Cmp(vy))
 		}
-		switch vy := (*y).(type) {
+		switch vy := (y).(type) {
 		case *big.Int:
 			r := big.NewRat(1, 1).SetInt(vy)
 			return Make_fixnum(vx.Cmp(r))
@@ -450,29 +410,24 @@ func number_cmp(x,y Obj) Obj {
 }
 
 func bitwise_ior(x,y Obj) Obj {
-	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
-	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	xfx := fixnum_p(x) == True
+	yfx := fixnum_p(y) == True
 	if xfx && yfx {
-		i1 := uintptr(unsafe.Pointer(x))
-		i2 := uintptr(unsafe.Pointer(y))
-		return Obj(unsafe.Pointer(uintptr(i1 | i2)))
+		i1 := fixnum_to_int(x)
+		i2 := fixnum_to_int(y)
+		return i1 | i2
 	}
 
-	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
-		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
-		panic("bad type")
-	}
+	if xfx { return bitwise_ior(y, x) }
 
-	if xfx { return bitwise_ior(y,x) }
-
-	switch vx := (*x).(type) {
+	switch vx := (x).(type) {
 	case *big.Int:
 		var z *big.Int = big.NewInt(0)
 		if yfx {
 			vy := big.NewInt(int64(fixnum_to_int(y)))
 			return wrap(z.Or(vx,vy))
 		}
-		switch vy := (*y).(type) {
+		switch vy := (y).(type) {
 		case *big.Int:
 			return wrap(z.Or(vx,vy))
 		default:
@@ -483,29 +438,24 @@ func bitwise_ior(x,y Obj) Obj {
 }
 
 func bitwise_and(x,y Obj) Obj {
-	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
-	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	xfx := fixnum_p(x) == True
+	yfx := fixnum_p(y) == True
 	if xfx && yfx {
-		i1 := uintptr(unsafe.Pointer(x))
-		i2 := uintptr(unsafe.Pointer(y))
-		return Obj(unsafe.Pointer(uintptr(i1 & i2)))
-	}
-
-	if (!xfx && (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag) ||
-		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
-		panic("bad type")
+		i1 := fixnum_to_int(x)
+		i2 := fixnum_to_int(y)
+		return Obj(i1 & i2)
 	}
 
 	if xfx { return bitwise_and(y,x) }
 
-	switch vx := (*x).(type) {
+	switch vx := (x).(type) {
 	case *big.Int:
 		var z *big.Int = big.NewInt(0)
 		if yfx {
 			vy := big.NewInt(int64(fixnum_to_int(y)))
 			return wrap(z.And(vx,vy))
 		}
-		switch vy := (*y).(type) {
+		switch vy := (y).(type) {
 		case *big.Int:
 			return wrap(z.And(vx,vy))
 		default:
@@ -516,20 +466,18 @@ func bitwise_and(x,y Obj) Obj {
 }
 
 func bitwise_arithmetic_shift_right(x,y Obj) Obj {
-	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
-	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	xfx := fixnum_p(x) == True
+	yfx := fixnum_p(y) == True
 	if !yfx { panic("bad shift amount") }
 	// TODO: check the amount. shouldn't be negative, and perhaps
 	// '>>' does a modulo on the amount.
-	amount := uint(uintptr(unsafe.Pointer(y)) >> fixnum_shift)
+	amount := uint(fixnum_to_int(y))
 	if xfx {
-		i1 := uintptr(unsafe.Pointer(x)) >> fixnum_shift
-		return Obj(unsafe.Pointer(uintptr(((i1 >> amount) << fixnum_shift) | fixnum_tag)))
-	} else if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
-		panic("bad type")
+		i1 := fixnum_to_int(x)
+		return Obj(i1 >> amount)
 	}
 
-	switch vx := (*x).(type) {
+	switch vx := (x).(type) {
 	case *big.Int:
 		var z *big.Int = big.NewInt(0)
 		return wrap(z.Rsh(vx, amount))
@@ -538,25 +486,23 @@ func bitwise_arithmetic_shift_right(x,y Obj) Obj {
 }
 
 func bitwise_arithmetic_shift_left(x,y Obj) Obj {
-	xfx := (uintptr(unsafe.Pointer(x)) & fixnum_mask) == fixnum_tag
-	yfx := (uintptr(unsafe.Pointer(y)) & fixnum_mask) == fixnum_tag
+	xfx := fixnum_p(x) == True
+	yfx := fixnum_p(y) == True
 	if !yfx { panic("bad shift amount") }
-	amount := uint(uintptr(unsafe.Pointer(y)) >> fixnum_shift)
-	if xfx && amount < 32 - fixnum_shift {
-		i := int64(int(uintptr(unsafe.Pointer(x)) >> fixnum_shift))
+	amount := uint(fixnum_to_int(y))
+	if xfx && amount < 32 {
+		i := fixnum_to_int(x)
 		r := i << amount
-		if r >= int64(fixnum_min) && r <= int64(fixnum_max) {
-			return Obj(unsafe.Pointer(uintptr((r << fixnum_shift) | fixnum_tag)))
+		if r >> amount == i {
+			return Obj(r)
 		} else {
-			return wrap(big.NewInt(r))
+			return wrap(big.NewInt(int64(r)))
 		}
 	} else if xfx {
 		x = wrap(big.NewInt(int64(fixnum_to_int(x))))
-	} else if (uintptr(unsafe.Pointer(x)) & heap_mask) != heap_tag {
-		panic("bad type")
 	}
 
-	switch vx := (*x).(type) {
+	switch vx := (x).(type) {
 	case *big.Int:
 		var z *big.Int = big.NewInt(0)
 		return wrap(z.Lsh(vx, amount))
@@ -579,7 +525,7 @@ func _number_to_string(num Obj, radix Obj) Obj {
 		return String_string(fmt.Sprintf(format, fixnum_to_int(num)))
 	}
 
-	switch v := (*num).(type) {
+	switch v := (num).(type) {
 	case *big.Int:
 		return String_string(fmt.Sprintf(format, v))
 	case *big.Rat:
@@ -606,8 +552,7 @@ func _number_to_string(num Obj, radix Obj) Obj {
 
 // TODO: handle flonums, compnums, ratnums, etc
 func _string_to_number(_str Obj, _radix Obj) Obj {
-	if is_immediate(_str) { panic("bad type") }
-	str := string((*_str).([]rune))
+	str := string((_str).([]rune))
 
 	radix := number_to_int(_radix)
 	switch {
