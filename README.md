@@ -17,9 +17,7 @@ our stack.
 
 [![Build Status](https://travis-ci.org/weinholt/conscheme.svg?branch=master)](https://travis-ci.org/weinholt/conscheme)
 
-The implementation is being updated to support newer golang versions.
-*It is currently not working* due to crashes in the garbage collector
-that have to do with how Conscheme manages simple data types.
+The implementation has been updated to support newer golang versions.
 
 ## Installing
 
