@@ -26,6 +26,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"os"
 	"runtime"
 )
 
@@ -80,7 +81,7 @@ func int17(i uint32) int {
 	return x - (1 << 17)
 }
 
-func Conscheme(header, code Obj) Obj {
+func _validate_header_version(header Obj) {
 	version := -1
 
 	// look for the bytecode version header
@@ -97,6 +98,10 @@ func Conscheme(header, code Obj) Obj {
 	if version != 1 {
 		panic(fmt.Sprintf("Incompatible bytecode: %d", version))
 	}
+}
+
+func Conscheme(header, code Obj) Obj {
+	_validate_header_version(header)
 
 	bytecode := Vector_ref(code, Make_fixnum(0))
 	constants := Vector_ref(code, Make_fixnum(1))
@@ -108,6 +113,26 @@ func Conscheme(header, code Obj) Obj {
 	// fmt.Printf("\n")
 
 	return _bytecode_run(bytecode, constants, primordial)
+}
+
+func try_open_image(fn string) (*Deserializer, error) {
+	f, e := os.OpenFile(fn, os.O_RDONLY, 0666)
+	if e != nil { return nil, e }
+	d, e := NewReader(f)
+	if e != nil { return nil, e }
+	return d, nil
+}
+
+func _bytecode_load(fn Obj) Obj {
+	// Loads bytecode from a named file. Returns a vector of
+	// bytecode and constant pool.
+	filename := fn.([]rune)
+	d, e := try_open_image(string(filename))
+	if e != nil { return Eol }
+	header := d.ReadObject()
+	_validate_header_version(header)
+	code := d.ReadObject()
+	return code
 }
 
 // Top-level environment. Should there be one of these per process, or
@@ -324,7 +349,7 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 					p.label, i))
 			}
 			if p.apply == nil { panic("tail-call to primitive") }
-			tail_frame(stack, argnum + int((dst_i & OP1_R2)))
+			tail_frame(stack, argnum + int(dst_i & OP1_R2))
 			for i := argnum-1; i >= 0; i-- {
 				stack.regs[i] = argstack.Pop()
 			}
@@ -393,8 +418,6 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 				i >> I_SHIFT, i))
 		}
 	}
-	// Appease Go
-	panic("fell off the edge in run()")
 }
 
 func aprun(proc *Procedure, args []Obj, ct Obj) Obj {

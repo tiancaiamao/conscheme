@@ -3,7 +3,7 @@
 package vm
 import "fmt"
 import "os"
-var primitive [103]Obj
+var primitive [104]Obj
 func init() {
 	primitive[98] = wrap(&Procedure{name:"stop-cpu-profile",required:0,apply:nil,label:98})
 	primitive[97] = wrap(&Procedure{name:"start-cpu-profile",required:1,apply:nil,label:97})
@@ -53,6 +53,7 @@ func init() {
 	primitive[56] = wrap(&Procedure{name:"$cell-set!",required:2,apply:nil,label:56})
 	primitive[55] = wrap(&Procedure{name:"$cell-ref",required:1,apply:nil,label:55})
 	primitive[54] = wrap(&Procedure{name:"$make-cell",required:1,apply:nil,label:54})
+	primitive[103] = wrap(&Procedure{name:"$bytecode-load",required:1,apply:nil,label:103})
 	primitive[53] = wrap(&Procedure{name:"$bytecode-run",required:3,apply:nil,label:53})
 	primitive[52] = wrap(&Procedure{name:"command-line",required:0,apply:nil,label:52})
 	primitive[51] = wrap(&Procedure{name:"exit",required:1,apply:nil,label:51})
@@ -224,6 +225,8 @@ func evprimn(primop uint32, args []Obj, ct Obj) Obj {
 		v[0] = args[0]
 		var vv interface{} = &v
 		return Obj(vv)
+	case 103: // $bytecode-load
+		return _bytecode_load(args[0])
 	case 53: // $bytecode-run
 		return _bytecode_run(args[0], args[1], args[2])
 	case 52: // command-line
@@ -347,8 +350,8 @@ func evprimn(primop uint32, args []Obj, ct Obj) Obj {
 		return boolean_p(args[0])
 	default:
 		fmt.Fprintf(os.Stderr, "Please regenerate primitives.go\n")
-		panic(fmt.Sprintf("Unimplemented primitive: %s",primop))
+		panic(fmt.Sprintf("Unimplemented primitive: %d",primop))
 	}
-	panic(fmt.Sprintf("Fell off the edge in evprimn(): %s",primop))
+	panic(fmt.Sprintf("Fell off the edge in evprimn(): %d",primop))
 }
 

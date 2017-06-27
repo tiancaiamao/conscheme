@@ -34,7 +34,11 @@ func apprim(proc *Procedure, args []Obj, ct Obj) Obj {
 func ap(oproc Obj, args []Obj, ct Obj) Obj {
 	// oproc should be a Procedure.
 	proc := (oproc).(*Procedure)
-	return proc.apply(proc, args, ct)
+	if proc.apply == nil {
+		return apprim(proc, args, ct)
+	} else {
+		return proc.apply(proc, args, ct)
+	}
 }
 
 // Implements the apply primitive

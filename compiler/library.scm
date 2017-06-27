@@ -1,5 +1,5 @@
 ;; -*- mode: scheme; coding: utf-8 -*-
-;; Copyright (C) 2011 Göran Weinholt <goran@weinholt.se>
+;; Copyright (C) 2011, 2017 Göran Weinholt <goran@weinholt.se>
 ;; Copyright (C) 2011 Per Odlund <per.odlund@gmail.com>
 
 ;; Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -209,17 +209,17 @@
 
 (define (memq el list)
   (cond ((null? list) #f)
-        ((eq? el (car list)) #t)
+        ((eq? el (car list)) list)
         (else (memq el (cdr list)))))
 
 (define (memv el list)
   (cond ((null? list) #f)
-        ((eqv? el (car list)) #t)
+        ((eqv? el (car list)) list)
         (else (memv el (cdr list)))))
 
 (define (member el list)
   (cond ((null? list) #f)
-        ((equal? el (car list)) #t)
+        ((equal? el (car list)) list)
         (else (member el (cdr list)))))
 
 (define (assq el list)
@@ -474,14 +474,33 @@
       ($write-char c (current-output-port))
       ($write-char c (car rest))))
 
+(define (bytecode-filename filename)
+  ;; The file extension is replaced with .cso (conscheme serialized
+  ;; object).
+  (let ((rev-basename (memv #\. (reverse (string->list filename)))))
+    (if rev-basename
+        (string-append (list->string (reverse (cdr rev-basename)))
+                       ".cso")
+        (string-append filename ".cso"))))
+
 (define (load filename)
-  (call-with-input-file filename
-    (lambda (p)
-      (let lp ()
-        (let ((datum (read p)))
-          (unless (eof-object? datum)
-            (eval datum (interaction-environment))
-            (lp)))))))
+  (let ((bytecode-file (bytecode-filename filename)))
+    (let ((code (and (file-exists? bytecode-file)
+                     ($bytecode-load bytecode-file))))
+      (cond (code
+             ;; Use the pre-compiled .cso file of the version (compile
+             ;; using compile-file).
+             (let ((bc (vector-ref code 0))
+                   (consts (vector-ref code 1)))
+               ($bytecode-run bc consts (current-thread))))
+            (else
+             (call-with-input-file filename
+               (lambda (p)
+                 (let lp ()
+                   (let ((datum (read p)))
+                     (unless (eof-object? datum)
+                       (eval datum (interaction-environment))
+                       (lp)))))))))))
 
 ;;; R6RS
 

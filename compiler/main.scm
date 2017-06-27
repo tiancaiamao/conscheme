@@ -58,17 +58,22 @@
 (define (compile-expression expr)
   (codegen (closures (top-level-cps (freevar (primops (mutation (aconv (expand expr)))))))))
 
-(define (bytecode-compile)
-  (let ((output-file "conscheme.image")
-        (input-file "main.scm"))
-    (let ((code (compile-expression (list 'include input-file))))
-      (if (member "print" (command-line))
-          (pretty-print code))
-      (if (file-exists? output-file)
-          (delete-file output-file))
-      (call-with-port (open-file-output-port output-file)
-        (lambda (p)
-          (serialize-object code p '(bytecode . 1)))))))
+(define (compile-bytecode-main)
+  (let ((input-file "main.scm")
+        (output-file "conscheme.image"))
+    (compile-bytecode input-file output-file)))
+
+(define (compile-file input-file)
+  (let ((output-file (bytecode-filename input-file)))
+    (compile-bytecode input-file output-file)))
+
+(define (compile-bytecode input-file output-file)
+  (let ((code (compile-expression (list 'include input-file))))
+    (if (file-exists? output-file)
+        (delete-file output-file))
+    (call-with-port (open-file-output-port output-file)
+      (lambda (p)
+        (serialize-object code p '(bytecode . 1))))))
 
 (define (print . x) (for-each display x) (newline))
 
@@ -105,12 +110,9 @@
 (cond ((null? (command-line))
        (repl))
       ((member "bytecode-compile" (command-line))
-       (bytecode-compile))
+       (compile-bytecode-main))
       ((member "genprim" (command-line))
        (print-operations (current-output-port)))
-      ((member "tests" (command-line))
-       ;; TODO: move to a script
-       (tests))
       (else
        (display "Usage: main [compile|bytecode-compile|genprim].\n")
        (exit 1)))

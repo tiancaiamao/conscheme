@@ -130,7 +130,8 @@
     (open-output-file . 99)
     (bitwise-arithmetic-shift-left . 100)
     (thread-queue . 101)
-    (thread-queue-set! . 102)))
+    (thread-queue-set! . 102)
+    ($bytecode-load . 103)))
 
 (define (primitive-number name)
   (let ((v (assq name *primitive-numbers*)))
@@ -238,9 +239,9 @@
             *operations*)
   (display "\tdefault:\n" p)
   (display "\t\tfmt.Fprintf(os.Stderr, \"Please regenerate primitives.go\\n\")\n" p)
-  (display "\t\tpanic(fmt.Sprintf(\"Unimplemented primitive: %s\",primop))\n" p)
+  (display "\t\tpanic(fmt.Sprintf(\"Unimplemented primitive: %d\",primop))\n" p)
   (display "\t}\n" p)
-  (display "\tpanic(fmt.Sprintf(\"Fell off the edge in evprimn(): %s\",primop))\n" p)
+  (display "\tpanic(fmt.Sprintf(\"Fell off the edge in evprimn(): %d\",primop))\n" p)
   (display "}\n\n" p))
 
 ;; Booleans
@@ -362,6 +363,7 @@
 (define-call command-line "Command_line" 0)
 
 (define-call $bytecode-run "_bytecode_run" 3)
+(define-call $bytecode-load "_bytecode_load" 1)
 
 ;; Cells, internal to the compiler, used for mutation. TODO: should
 ;; not be callable by the user.
