@@ -47,9 +47,9 @@ func apply(args []Obj, ct Obj) Obj {
 	fun := args[0]
 	// The last argument to apply is a list
 	last := args[len(args)-1]
-	funargs = make([]Obj, len(args) - 2 + fixnum_to_int(Length(last)))
+	funargs = make([]Obj, len(args)-2+fixnum_to_int(Length(last)))
 	copy(funargs, args[1:len(args)-1])
-	for i := len(args)-2; last != Eol; i, last = i + 1, cdr(last) {
+	for i := len(args) - 2; last != Eol; i, last = i+1, cdr(last) {
 		funargs[i] = car(last)
 	}
 

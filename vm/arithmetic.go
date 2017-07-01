@@ -27,9 +27,9 @@
 package vm
 
 import (
-	"math/big"
 	"fmt"
 	"math"
+	"math/big"
 	"strings"
 )
 
@@ -91,20 +91,22 @@ func number_to_int(x Obj) int {
 
 func number_p(x Obj) Obj {
 	switch (x).(type) {
-	default: return False
+	default:
+		return False
 	case int:
 	case *big.Int:
 	case *big.Rat:
 	case float64:
 	case complex128:
-	// case *Compnum:
+		// case Compnum:
 	}
 	return True
 }
 
 func integer_p(x Obj) Obj {
 	switch v := (x).(type) {
-	default: return False
+	default:
+		return False
 	case int:
 		return True
 	case *big.Int:
@@ -130,57 +132,14 @@ func denominator(num Obj) Obj {
 	panic("bad type")
 }
 
-
-// func number_equal(x,y Obj) Obj {
-// 	xfx := fixnum_p(x) == True
-//   	yfx := fixnum_p(y) == True
-// 	if xfx && yfx {	return Make_boolean(x == y) }
-
-// 	if (!xfx && (fixnum_to_int(x) & heap_mask) != heap_tag) ||
-// 		(!yfx && (uintptr(unsafe.Pointer(y)) & heap_mask) != heap_tag) {
-// 		panic("bad type")
-// 	}
-
-// 	if xfx { return number_equal(y,x) }
-
-// 	switch vx := (*x).(type) {
-// 	case *big.Int:
-// 		if yfx {
-// 			vy := big.NewInt(int64(fixnum_to_int(y)))
-// 			return Make_boolean(vx.Cmp(vy) == 0)
-// 		}
-// 		switch vy := (*y).(type) {
-// 		case *big.Int:
-// 			return Make_boolean(vx.Cmp(vy) == 0)
-// 		case *big.Rat:
-// 			return number_equal(y,x)
-// 		default:
-// 			panic("bad type")
-// 		}
-// 	case *big.Rat:
-// 		// rationals should always have been converted into
-// 		// other types if the denominator is one
-// 		if yfx { return False }
-// 		switch vy := (*y).(type) {
-// 		case *big.Int:
-// 			return False
-// 		case *big.Rat:
-// 			return Make_boolean(vx.Cmp(vy) == 0)
-// 		default:
-// 			panic("bad type")
-// 		}
-// 	}
-// 	panic("bad type")
-// }
-
-func number_add(x,y Obj) Obj {
+func number_add(x, y Obj) Obj {
 	xfx := fixnum_p(x) == True
 	yfx := fixnum_p(y) == True
 	if xfx && yfx {
 		i1 := fixnum_to_int(x)
 		i2 := fixnum_to_int(y)
 		r := i1 + i2
-		if ((r < i1) != (i2 < 0)) {
+		if (r < i1) != (i2 < 0) {
 			var b1 *big.Int = big.NewInt(int64(i1))
 			var b2 *big.Int = big.NewInt(int64(i2))
 			return wrap(b1.Add(b1, b2))
@@ -189,18 +148,20 @@ func number_add(x,y Obj) Obj {
 		}
 	}
 
-	if xfx { return number_add(y,x) }
+	if xfx {
+		return number_add(y, x)
+	}
 
 	switch vx := (x).(type) {
 	case *big.Int:
 		var z *big.Int = big.NewInt(0)
 		if yfx {
 			vy := big.NewInt(int64(fixnum_to_int(y)))
-			return wrap(z.Add(vx,vy))
+			return wrap(z.Add(vx, vy))
 		}
 		switch vy := (y).(type) {
 		case *big.Int:
-			return simpBig(z.Add(vx,vy))
+			return simpBig(z.Add(vx, vy))
 		default:
 			panic("bad type")
 		}
@@ -208,7 +169,7 @@ func number_add(x,y Obj) Obj {
 	panic("bad type")
 }
 
-func number_subtract(x,y Obj) Obj {
+func number_subtract(x, y Obj) Obj {
 	xfx := fixnum_p(x) == True
 	yfx := fixnum_p(y) == True
 	if xfx && yfx {
@@ -236,7 +197,7 @@ func number_subtract(x,y Obj) Obj {
 		var z *big.Int = big.NewInt(0)
 		switch vy := (y).(type) {
 		case *big.Int:
-			return simpBig(z.Sub(vx,vy))
+			return simpBig(z.Sub(vx, vy))
 		default:
 			panic("bad type")
 		}
@@ -244,17 +205,17 @@ func number_subtract(x,y Obj) Obj {
 	panic("bad type")
 }
 
-func number_divide(x,y Obj) Obj {
+func number_divide(x, y Obj) Obj {
 	xfx := fixnum_p(x) == True
 	yfx := fixnum_p(y) == True
 	if xfx && yfx {
 		i1 := fixnum_to_int(x)
 		i2 := fixnum_to_int(y)
-		r, m := i1 / i2, i1 % i2
+		r, m := i1/i2, i1%i2
 		if m == 0 && r > fixnum_min && r < fixnum_max {
 			return Make_fixnum(r)
 		} else {
-			return wrap(big.NewRat(int64(i1),int64(i2)))
+			return wrap(big.NewRat(int64(i1), int64(i2)))
 		}
 	}
 
@@ -271,22 +232,22 @@ func number_divide(x,y Obj) Obj {
 		var z *big.Int = big.NewInt(0)
 		switch vy := (y).(type) {
 		case *big.Int:
-			return simpBig(z.Div(vx,vy))
+			return simpBig(z.Div(vx, vy))
 		case *big.Rat:
-			z := big.NewRat(1,1)
+			z := big.NewRat(1, 1)
 			z.SetInt(vx)
-			return simpRat(z.Quo(z,vy))
+			return simpRat(z.Quo(z, vy))
 		default:
 			panic("bad type")
 		}
 	case *big.Rat:
-		z := big.NewRat(1,1)
+		z := big.NewRat(1, 1)
 		switch vy := (y).(type) {
 		case *big.Int:
 			z.SetInt(vy)
-			return simpRat(z.Quo(vx,z))
+			return simpRat(z.Quo(vx, z))
 		case *big.Rat:
-			return simpRat(z.Quo(vx,vy))
+			return simpRat(z.Quo(vx, vy))
 		}
 	}
 	panic("bad type")
@@ -332,43 +293,46 @@ func number_multiply(x, y Obj) Obj {
 		var z *big.Int = big.NewInt(0)
 		switch vy := (y).(type) {
 		case *big.Int:
-			return simpBig(z.Mul(vx,vy))
+			return simpBig(z.Mul(vx, vy))
 		case *big.Rat:
-			z := big.NewRat(1,1)
+			z := big.NewRat(1, 1)
 			z.SetInt(vx)
-			return simpRat(z.Mul(z,vy))
+			return simpRat(z.Mul(z, vy))
 		default:
 			panic("bad type")
 		}
 	case *big.Rat:
-		z := big.NewRat(1,1)
+		z := big.NewRat(1, 1)
 		switch vy := (y).(type) {
 		case *big.Int:
 			z.SetInt(vy)
-			return simpRat(z.Mul(vx,z))
+			return simpRat(z.Mul(vx, z))
 		case *big.Rat:
-			return simpRat(z.Mul(vx,vy))
+			return simpRat(z.Mul(vx, vy))
 		}
 	}
 	panic("bad type")
 }
 
-
-
-func number_cmp(x,y Obj) Obj {
+func number_cmp(x, y Obj) Obj {
 	xfx := fixnum_p(x) == True
 	yfx := fixnum_p(y) == True
 	if xfx && yfx {
 		i1 := fixnum_to_int(x)
 		i2 := fixnum_to_int(y)
 		switch {
-		case i1 > i2: return Make_fixnum(1)
-		case i1 < i2: return Make_fixnum(-1)
-		default: return Make_fixnum(0)
+		case i1 > i2:
+			return Make_fixnum(1)
+		case i1 < i2:
+			return Make_fixnum(-1)
+		default:
+			return Make_fixnum(0)
 		}
 	}
 
-	if xfx { return number_subtract(y,x) }
+	if xfx {
+		return number_subtract(y, x)
+	}
 
 	switch vx := (x).(type) {
 	case *big.Int:
@@ -409,7 +373,7 @@ func number_cmp(x,y Obj) Obj {
 	panic("bad type")
 }
 
-func bitwise_ior(x,y Obj) Obj {
+func bitwise_ior(x, y Obj) Obj {
 	xfx := fixnum_p(x) == True
 	yfx := fixnum_p(y) == True
 	if xfx && yfx {
@@ -418,18 +382,20 @@ func bitwise_ior(x,y Obj) Obj {
 		return i1 | i2
 	}
 
-	if xfx { return bitwise_ior(y, x) }
+	if xfx {
+		return bitwise_ior(y, x)
+	}
 
 	switch vx := (x).(type) {
 	case *big.Int:
 		var z *big.Int = big.NewInt(0)
 		if yfx {
 			vy := big.NewInt(int64(fixnum_to_int(y)))
-			return wrap(z.Or(vx,vy))
+			return wrap(z.Or(vx, vy))
 		}
 		switch vy := (y).(type) {
 		case *big.Int:
-			return wrap(z.Or(vx,vy))
+			return wrap(z.Or(vx, vy))
 		default:
 			panic("bad type")
 		}
@@ -437,7 +403,7 @@ func bitwise_ior(x,y Obj) Obj {
 	panic("bad type")
 }
 
-func bitwise_and(x,y Obj) Obj {
+func bitwise_and(x, y Obj) Obj {
 	xfx := fixnum_p(x) == True
 	yfx := fixnum_p(y) == True
 	if xfx && yfx {
@@ -446,18 +412,20 @@ func bitwise_and(x,y Obj) Obj {
 		return Obj(i1 & i2)
 	}
 
-	if xfx { return bitwise_and(y,x) }
+	if xfx {
+		return bitwise_and(y, x)
+	}
 
 	switch vx := (x).(type) {
 	case *big.Int:
 		var z *big.Int = big.NewInt(0)
 		if yfx {
 			vy := big.NewInt(int64(fixnum_to_int(y)))
-			return wrap(z.And(vx,vy))
+			return wrap(z.And(vx, vy))
 		}
 		switch vy := (y).(type) {
 		case *big.Int:
-			return wrap(z.And(vx,vy))
+			return wrap(z.And(vx, vy))
 		default:
 			panic("bad type")
 		}
@@ -465,10 +433,13 @@ func bitwise_and(x,y Obj) Obj {
 	panic("bad type")
 }
 
-func bitwise_arithmetic_shift_right(x,y Obj) Obj {
+func bitwise_arithmetic_shift_right(x, y Obj) Obj {
 	xfx := fixnum_p(x) == True
 	yfx := fixnum_p(y) == True
-	if !yfx { panic("bad shift amount") }
+	if !yfx {
+		panic("bad shift amount")
+	}
+
 	// TODO: check the amount. shouldn't be negative, and perhaps
 	// '>>' does a modulo on the amount.
 	amount := uint(fixnum_to_int(y))
@@ -485,15 +456,18 @@ func bitwise_arithmetic_shift_right(x,y Obj) Obj {
 	panic("bad type")
 }
 
-func bitwise_arithmetic_shift_left(x,y Obj) Obj {
+func bitwise_arithmetic_shift_left(x, y Obj) Obj {
 	xfx := fixnum_p(x) == True
 	yfx := fixnum_p(y) == True
-	if !yfx { panic("bad shift amount") }
+	if !yfx {
+		panic("bad shift amount")
+	}
+
 	amount := uint(fixnum_to_int(y))
 	if xfx && amount < 32 {
 		i := fixnum_to_int(x)
 		r := i << amount
-		if r >> amount == i {
+		if r>>amount == i {
 			return Obj(r)
 		} else {
 			return wrap(big.NewInt(int64(r)))
@@ -510,15 +484,18 @@ func bitwise_arithmetic_shift_left(x,y Obj) Obj {
 	panic("bad type")
 }
 
-
 func _number_to_string(num Obj, radix Obj) Obj {
 	var format string
 
 	switch number_to_int(radix) {
-	case 2: format = "%b"
-	case 8: format = "%o"
-	case 10: format = "%d"
-	default: format = "%x"
+	case 2:
+		format = "%b"
+	case 8:
+		format = "%o"
+	case 10:
+		format = "%d"
+	default:
+		format = "%x"
 	}
 
 	if fixnum_p(num) != False {
@@ -529,7 +506,7 @@ func _number_to_string(num Obj, radix Obj) Obj {
 	case *big.Int:
 		return String_string(fmt.Sprintf(format, v))
 	case *big.Rat:
-		return String_string(fmt.Sprintf(format + "/" + format,
+		return String_string(fmt.Sprintf(format+"/"+format,
 			v.Num(), v.Denom()))
 	case float64:
 		if format != "%d" {
@@ -544,7 +521,7 @@ func _number_to_string(num Obj, radix Obj) Obj {
 		// points, which is worse
 		format = "%+f%+fi"
 		return String_string(fmt.Sprintf(format, real(v), imag(v)))
-	// case *Compnum:
+		// case Compnum:
 	}
 
 	panic("number->string needs numbers")
@@ -556,15 +533,25 @@ func _string_to_number(_str Obj, _radix Obj) Obj {
 
 	radix := number_to_int(_radix)
 	switch {
-	case strings.HasPrefix(str, "#b"): radix = 2; str = str[2:]
-	case strings.HasPrefix(str, "#o"): radix = 8; str = str[2:]
-	case strings.HasPrefix(str, "#d"): radix = 10; str = str[2:]
-	case strings.HasPrefix(str, "#x"): radix = 16; str = str[2:]
+	case strings.HasPrefix(str, "#b"):
+		radix = 2
+		str = str[2:]
+	case strings.HasPrefix(str, "#o"):
+		radix = 8
+		str = str[2:]
+	case strings.HasPrefix(str, "#d"):
+		radix = 10
+		str = str[2:]
+	case strings.HasPrefix(str, "#x"):
+		radix = 16
+		str = str[2:]
 	}
 
 	var v big.Int
 	z, s := v.SetString(str, radix)
-	if !s { return False }
+	if !s {
+		return False
+	}
 	if z.Cmp(fixnum_max_Int) < 1 && z.Cmp(fixnum_min_Int) > -1 {
 		return Make_fixnum(int(z.Int64()))
 	}

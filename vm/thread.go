@@ -29,9 +29,9 @@ import (
 
 type Thread struct {
 	name, specific, thunk, queue Obj
-	once *sync.Once
-	channel chan Obj
-	links *list.List
+	once                         *sync.Once
+	channel                      chan Obj
+	links                        *list.List
 }
 
 var primordial Obj
@@ -41,13 +41,15 @@ func init() {
 	once := new(sync.Once)
 	channel := make(chan Obj, 100)
 	links := list.New()
-	thunk := Eol		// XXX: makes (thread-start! primordial) not work
+	thunk := Eol // XXX: makes (thread-start! primordial) not work
 	t := &Thread{name, False, thunk, Eol, once, channel, links}
 	primordial = wrap(t)
 }
 
 func _make_thread(thunk, name Obj) Obj {
-	if procedure_p(thunk) == False { panic("bad type") }
+	if procedure_p(thunk) == False {
+		panic("bad type")
+	}
 	once := new(sync.Once)
 	channel := make(chan Obj, 100)
 	links := list.New()
@@ -58,8 +60,10 @@ func _make_thread(thunk, name Obj) Obj {
 
 func thread_p(thread Obj) Obj {
 	switch (thread).(type) {
-	default: return False
-	case *Thread: return True
+	default:
+		return False
+	case *Thread:
+		return True
 	}
 }
 
@@ -103,7 +107,7 @@ func thread_link_ex(_t1, _t2 Obj) Obj {
 
 func send(thread, o Obj) Obj {
 	t := (thread).(*Thread)
-	go func(t *Thread, o Obj){
+	go func(t *Thread, o Obj) {
 		t.channel <- o
 	}(t, o)
 	return Void
@@ -111,24 +115,24 @@ func send(thread, o Obj) Obj {
 
 func _receive(thread Obj) Obj {
 	t := (thread).(*Thread)
-	return <- t.channel
+	return <-t.channel
 }
 
 func thread_start_ex(thread Obj) Obj {
 	t := (thread).(*Thread)
 
-	go t.once.Do(func () {
+	go t.once.Do(func() {
 		defer func() {
 			if err := recover(); err != nil {
 				for e := t.links.Front(); e != nil; e = e.Next() {
-					send((e.Value).(Obj), _vector(intern("died"),thread))
+					send((e.Value).(Obj), _vector(intern("died"), thread))
 				}
 				return
 			}
 		}()
 		// This has to create a new stack
 		ap(t.thunk, nil, thread)
-	});
+	})
 
 	return Void
 }

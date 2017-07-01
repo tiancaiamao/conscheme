@@ -61,10 +61,10 @@ type ScmChar struct {
 // Constants.
 var (
 	False = Obj(false)
-	True = Obj(true)
-	Eol = Obj(SuiGeneris{"()"})	  // empty list
-	Eof = Obj(SuiGeneris{"#<eof>"})   // end of file object
-	Void = Obj(SuiGeneris{"#<void>"}) // the unspecified value
+	True  = Obj(true)
+	Eol   = Obj(SuiGeneris{"()"})      // empty list
+	Eof   = Obj(SuiGeneris{"#<eof>"})  // end of file object
+	Void  = Obj(SuiGeneris{"#<void>"}) // the unspecified value
 )
 
 // Chars
@@ -109,12 +109,16 @@ func boolean_p(x Obj) Obj {
 }
 
 func Make_boolean(x bool) Obj {
-	if x { return True }
+	if x {
+		return True
+	}
 	return False
 }
 
 func not(x Obj) Obj {
-	if x == False {	return True }
+	if x == False {
+		return True
+	}
 	return False
 }
 
@@ -128,7 +132,7 @@ func pair_p(x Obj) Obj {
 	return False
 }
 
-func Cons(x,y Obj) Obj {
+func Cons(x, y Obj) Obj {
 	var v [2]Obj
 	v[0] = x
 	v[1] = y
@@ -153,7 +157,7 @@ func set_car_ex(x, value Obj) Obj {
 	return Void
 }
 
-func set_cdr_ex(x,value Obj) Obj {
+func set_cdr_ex(x, value Obj) Obj {
 	v := (x).(*[2]Obj)
 	v[1] = value
 	return Void
@@ -218,7 +222,7 @@ func _vector(v ...Obj) Obj {
 	return Obj(vi)
 }
 
-func Make_vector(length,init Obj) Obj {
+func Make_vector(length, init Obj) Obj {
 	if fixnum_p(length) == False {
 		panic("bad type")
 	}
@@ -237,12 +241,12 @@ func vector_length(x Obj) Obj {
 	return make_number(len(v))
 }
 
-func Vector_ref(x,idx Obj) Obj {
+func Vector_ref(x, idx Obj) Obj {
 	v := (x).([]Obj)
 	return v[fixnum_to_int(idx)]
 }
 
-func Vector_set_ex(x,idx,value Obj) Obj {
+func Vector_set_ex(x, idx, value Obj) Obj {
 	v := (x).([]Obj)
 	v[fixnum_to_int(idx)] = value
 	return Void
@@ -264,7 +268,7 @@ func String_string(s string) Obj {
 	return ([]rune)(s)
 }
 
-func Make_string(length,init Obj) Obj {
+func Make_string(length, init Obj) Obj {
 	if fixnum_p(length) == False || char_p(init) == False {
 		panic("bad type")
 	}
@@ -289,7 +293,7 @@ func String_ref(x, idx Obj) Obj {
 	return Make_char(v[fixnum_to_int(idx)])
 }
 
-func String_set_ex(x,idx,ch Obj) Obj {
+func String_set_ex(x, idx, ch Obj) Obj {
 	v := (x).([]rune)
 	v[fixnum_to_int(idx)] = char_to_int(ch)
 	return Void
@@ -314,7 +318,8 @@ func symbol_p(x Obj) Obj {
 }
 
 func getsym(str string) (Obj, bool) {
-	symlock.RLock(); defer symlock.RUnlock()
+	symlock.RLock()
+	defer symlock.RUnlock()
 	sym, is_interned := symtab[str]
 	return sym, is_interned
 }
@@ -322,9 +327,12 @@ func getsym(str string) (Obj, bool) {
 func String_to_symbol(x Obj) Obj {
 	str := string((x).([]rune))
 	sym, is_interned := getsym(str)
-	if is_interned { return sym }
+	if is_interned {
+		return sym
+	}
 	// Intern the new symbol
-	symlock.Lock(); defer symlock.Unlock()
+	symlock.Lock()
+	defer symlock.Unlock()
 	sym = wrap(str)
 	symtab[str] = sym
 	return sym
@@ -344,7 +352,7 @@ func Symbol_to_string(x Obj) Obj {
 func Obj_display(x Obj, p io.Writer, write Obj) {
 	switch {
 	case number_p(x) != False:
-		str := string((_number_to_string(x,Make_fixnum(10))).([]rune))
+		str := string((_number_to_string(x, Make_fixnum(10))).([]rune))
 		fmt.Fprintf(p, "%v", str)
 	case char_p(x) != False:
 		if write != False {
@@ -361,23 +369,27 @@ func Obj_display(x Obj, p io.Writer, write Obj) {
 	case vector_p(x) != False:
 		fmt.Fprintf(p, "#(")
 		length := fixnum_to_int(vector_length(x))
-		for i := 0; i < length - 1; i++ {
-			Obj_display(Vector_ref(x,Make_fixnum(i)), p, write)
+		for i := 0; i < length-1; i++ {
+			Obj_display(Vector_ref(x, Make_fixnum(i)), p, write)
 			fmt.Fprintf(p, " ")
 		}
 		if length > 0 {
-			Obj_display(Vector_ref(x,Make_fixnum(length-1)), p, write)
+			Obj_display(Vector_ref(x, Make_fixnum(length-1)), p, write)
 		}
 		fmt.Fprintf(p, ")")
 	case string_p(x) != False:
 		// XXX: doesn't handle \n, etc
-		if write != False { fmt.Fprintf(p, "\"") }
+		if write != False {
+			fmt.Fprintf(p, "\"")
+		}
 		length := fixnum_to_int(String_length(x))
 		s := (x).([]rune)
 		for i := 0; i < length; i++ {
 			fmt.Fprintf(p, "%c", s[i])
 		}
-		if write != False { fmt.Fprintf(p, "\"") }
+		if write != False {
+			fmt.Fprintf(p, "\"")
+		}
 	case symbol_p(x) != False:
 		// XXX: doesn't handle escapes
 		Obj_display(Symbol_to_string(x), p, False)
@@ -405,14 +417,16 @@ func Obj_display(x Obj, p io.Writer, write Obj) {
 		fmt.Fprintf(p, "#<void>")
 	case procedure_p(x) != False:
 		proc := (x).(*Procedure)
-		fmt.Fprintf(p, "#<procedure %s>",proc.name)
+		fmt.Fprintf(p, "#<procedure %s>", proc.name)
 	case port_p(x) != False:
 		display_port(p, x)
 	case bytevector_p(x) != False:
 		fmt.Fprintf(p, "#vu8(")
 		bv := (x).([]byte)
 		for i := 0; i < len(bv); i++ {
-			if i > 0 { fmt.Fprintf(p, " ") }
+			if i > 0 {
+				fmt.Fprintf(p, " ")
+			}
 			fmt.Fprintf(p, "%d", bv[i])
 		}
 		fmt.Fprintf(p, ")")

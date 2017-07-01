@@ -36,34 +36,40 @@ import (
 // Characters
 
 func char_whitespace_p(x Obj) Obj {
-	if char_p(x) == False { panic("bad type") }
+	if char_p(x) == False {
+		panic("bad type")
+	}
 	return Make_boolean(unicode.IsSpace(char_to_int(x)))
 }
 
 func char_upcase(x Obj) Obj {
-	if char_p(x) == False { panic("bad type") }
+	if char_p(x) == False {
+		panic("bad type")
+	}
 	return Make_char(unicode.ToUpper(char_to_int(x)))
 }
 
 func char_downcase(x Obj) Obj {
-	if char_p(x) == False { panic("bad type") }
+	if char_p(x) == False {
+		panic("bad type")
+	}
 	return Make_char(unicode.ToLower(char_to_int(x)))
 }
 
 // Input and output
 
 type InputPort struct {
-	r io.Reader
+	r         io.Reader
 	is_binary bool
 	// one byte of lookahead if is_binary, otherwise one codepoint
 	lookahead_valid int
-	lookahead [utf8.UTFMax]byte
+	lookahead       [utf8.UTFMax]byte
 }
 
 type OutputPort struct {
-	w io.Writer
+	w         io.Writer
 	is_binary bool
-	buf [1]byte
+	buf       [1]byte
 }
 
 var stdin, curin, stdout, curout Obj
@@ -111,13 +117,15 @@ func display_port(out io.Writer, port Obj) {
 		fmt.Fprintf(out, "#<output-port ")
 		is_binary = v.is_binary
 		switch f := v.w.(type) {
-		case *os.File: name = f.Name()
+		case *os.File:
+			name = f.Name()
 		}
 	case *InputPort:
 		fmt.Fprintf(out, "#<input-port ")
 		is_binary = v.is_binary
 		switch f := v.r.(type) {
-		case *os.File: name = f.Name()
+		case *os.File:
+			name = f.Name()
 		}
 	}
 	if is_binary {
@@ -139,7 +147,7 @@ func current_output_port() Obj {
 }
 
 func file_exists_p(fn Obj) Obj {
-	_,err := os.Stat(string((fn).([]rune)))
+	_, err := os.Stat(string((fn).([]rune)))
 	return Make_boolean(err == nil)
 }
 
@@ -152,27 +160,34 @@ func delete_file(fn Obj) Obj {
 
 func open_input_file(fn Obj) Obj {
 	f, e := os.OpenFile(string((fn).([]rune)), os.O_RDONLY, 0666)
-	if e != nil { panic(fmt.Sprintf("I/O error: %s", e)) }
+	if e != nil {
+		panic(fmt.Sprintf("I/O error: %s", e))
+	}
 	return wrap(&InputPort{r: f, is_binary: false})
 }
 
 func open_output_file(fn Obj) Obj {
 	f, e := os.OpenFile(string((fn).([]rune)), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
-	if e != nil { panic(fmt.Sprintf("I/O error: %s", e)) }
+	if e != nil {
+		panic(fmt.Sprintf("I/O error: %s", e))
+	}
 	return wrap(&OutputPort{w: f, is_binary: false})
 }
 
 func open_file_output_port(fn Obj) Obj {
 	// TODO: takes three more arguments
 	f, e := os.OpenFile(string((fn).([]rune)), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
-	if e != nil { panic(fmt.Sprintf("I/O error: %s", e)) }
+	if e != nil {
+		panic(fmt.Sprintf("I/O error: %s", e))
+	}
 	return wrap(&OutputPort{w: f, is_binary: true})
 }
 
 func close_input_port(port Obj) Obj {
 	v := (port).(*InputPort)
 	switch f := v.r.(type) {
-	case *os.File: f.Close()
+	case *os.File:
+		f.Close()
 	}
 	return Void
 }
@@ -180,7 +195,8 @@ func close_input_port(port Obj) Obj {
 func close_output_port(port Obj) Obj {
 	v := (port).(*OutputPort)
 	switch f := v.w.(type) {
-	case *os.File: f.Close()
+	case *os.File:
+		f.Close()
 	}
 	return Void
 }
@@ -189,11 +205,13 @@ func close_port(port Obj) Obj {
 	switch v := (port).(type) {
 	case *InputPort:
 		switch f := v.r.(type) {
-		case *os.File: f.Close()
+		case *os.File:
+			f.Close()
 		}
 	case *OutputPort:
 		switch f := v.w.(type) {
-		case *os.File: f.Close()
+		case *os.File:
+			f.Close()
 		}
 	}
 	return Void
@@ -202,14 +220,18 @@ func close_port(port Obj) Obj {
 func _read_char(port Obj) Obj {
 	switch v := (port).(type) {
 	case *InputPort:
-		if v.is_binary { panic("bad port type") }
-		for ; !utf8.FullRune(v.lookahead[0:v.lookahead_valid]); {
+		if v.is_binary {
+			panic("bad port type")
+		}
+		for !utf8.FullRune(v.lookahead[0:v.lookahead_valid]) {
 			n, err := io.ReadFull(v.r,
-				v.lookahead[v.lookahead_valid:v.lookahead_valid + 1])
+				v.lookahead[v.lookahead_valid:v.lookahead_valid+1])
 			v.lookahead_valid += n
 			switch {
-			case err == io.EOF: return Eof
-			case err != nil: panic("I/O read error")
+			case err == io.EOF:
+				return Eof
+			case err != nil:
+				panic("I/O read error")
 			}
 		}
 		cp, _ := utf8.DecodeRune(v.lookahead[0:v.lookahead_valid])
@@ -222,14 +244,18 @@ func _read_char(port Obj) Obj {
 func _peek_char(port Obj) Obj {
 	switch v := (port).(type) {
 	case *InputPort:
-		if v.is_binary { panic("bad port type") }
-		for ; !utf8.FullRune(v.lookahead[0:v.lookahead_valid]); {
+		if v.is_binary {
+			panic("bad port type")
+		}
+		for !utf8.FullRune(v.lookahead[0:v.lookahead_valid]) {
 			n, err := io.ReadFull(v.r,
-				v.lookahead[v.lookahead_valid:v.lookahead_valid + 1])
+				v.lookahead[v.lookahead_valid:v.lookahead_valid+1])
 			v.lookahead_valid += n
 			switch {
-			case err == io.EOF: return Eof
-			case err != nil: panic("I/O read error")
+			case err == io.EOF:
+				return Eof
+			case err != nil:
+				panic("I/O read error")
 			}
 		}
 		cp, _ := utf8.DecodeRune(v.lookahead[0:v.lookahead_valid])
@@ -238,12 +264,16 @@ func _peek_char(port Obj) Obj {
 	panic("bad type")
 }
 
-func _write_char(ch,port Obj) Obj {
-	if char_p(ch) == False { panic("bad type") }
+func _write_char(ch, port Obj) Obj {
+	if char_p(ch) == False {
+		panic("bad type")
+	}
 	switch v := (port).(type) {
 	case *OutputPort:
-		if v.is_binary { panic("bad port type") }
-		buf := make([]rune,1)
+		if v.is_binary {
+			panic("bad port type")
+		}
+		buf := make([]rune, 1)
 		buf[0] = char_to_int(ch)
 		_, err := io.WriteString(v.w, string(buf))
 		// XXX: should check number of bytes written
@@ -258,9 +288,11 @@ func _write_char(ch,port Obj) Obj {
 func lookahead_u8(port Obj) Obj {
 	switch v := (port).(type) {
 	case *InputPort:
-		if !v.is_binary { panic("bad port type") }
+		if !v.is_binary {
+			panic("bad port type")
+		}
 		if v.lookahead_valid == 0 {
-			n, err := io.ReadFull(v.r,v.lookahead[0:1])
+			n, err := io.ReadFull(v.r, v.lookahead[0:1])
 			if n != 1 {
 				return Eof
 			}
@@ -277,9 +309,11 @@ func lookahead_u8(port Obj) Obj {
 func get_u8(port Obj) Obj {
 	switch v := (port).(type) {
 	case *InputPort:
-		if !v.is_binary { panic("bad port type") }
+		if !v.is_binary {
+			panic("bad port type")
+		}
 		if v.lookahead_valid == 0 {
-			n, err := io.ReadFull(v.r,v.lookahead[0:1])
+			n, err := io.ReadFull(v.r, v.lookahead[0:1])
 			if n != 1 {
 				return Eof
 			}
@@ -293,12 +327,16 @@ func get_u8(port Obj) Obj {
 	panic("bad type")
 }
 
-func put_u8(port,octet Obj) Obj {
+func put_u8(port, octet Obj) Obj {
 	byt := number_to_int(octet)
-	if byt < 0 || byt > 255 { panic("not an octet") }
+	if byt < 0 || byt > 255 {
+		panic("not an octet")
+	}
 	switch v := (port).(type) {
 	case *OutputPort:
-		if !v.is_binary { panic("bad port type") }
+		if !v.is_binary {
+			panic("bad port type")
+		}
 		v.buf[0] = byte(byt)
 		n, err := v.w.Write(v.buf[0:1])
 		if n != 1 {
@@ -313,11 +351,13 @@ func put_u8(port,octet Obj) Obj {
 	panic("bad type")
 }
 
-func put_bytevector(port,_bv Obj) Obj {
+func put_bytevector(port, _bv Obj) Obj {
 	bv := (_bv).([]byte)
 	switch v := (port).(type) {
 	case *OutputPort:
-		if !v.is_binary { panic("bad port type") }
+		if !v.is_binary {
+			panic("bad port type")
+		}
 		n, err := v.w.Write(bv)
 		// XXX: should loop
 		if n != len(bv) {
@@ -332,16 +372,20 @@ func put_bytevector(port,_bv Obj) Obj {
 	panic("bad type")
 }
 
-func display(x,port Obj) Obj {
+func display(x, port Obj) Obj {
 	v := (port).(*OutputPort)
-	if v.is_binary { panic("bad port type") }
+	if v.is_binary {
+		panic("bad port type")
+	}
 	Obj_display(x, v.w, False)
 	return Void
 }
 
-func write(x,port Obj) Obj {
+func write(x, port Obj) Obj {
 	v := (port).(*OutputPort)
-	if v.is_binary { panic("bad port type") }
+	if v.is_binary {
+		panic("bad port type")
+	}
 	Obj_display(x, v.w, True)
 	return Void
 }
@@ -350,14 +394,16 @@ func write(x,port Obj) Obj {
 
 func bytevector_p(x Obj) Obj {
 	switch (x).(type) {
-	case []byte: return True
+	case []byte:
+		return True
 	}
 	return False
 }
 
 func bytevector_length(x Obj) Obj {
 	switch v := (x).(type) {
-	case []byte: return make_number(len(v))
+	case []byte:
+		return make_number(len(v))
 	}
 	panic("bad type")
 }
@@ -402,7 +448,7 @@ func _bytevector_output_port_extract(p Obj) Obj {
 
 func Command_line() Obj {
 	ret := Eol
-	for i := len(os.Args)-1; i >= 0; i-- {
+	for i := len(os.Args) - 1; i >= 0; i-- {
 		arg := ([]rune)(os.Args[i])
 		ret = Cons(wrap(arg), ret)
 	}

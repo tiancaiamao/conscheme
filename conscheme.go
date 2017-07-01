@@ -22,20 +22,22 @@
 package main
 
 import (
-	"github.com/weinholt/conscheme/vm"
 	"flag"
 	"fmt"
+	"github.com/weinholt/conscheme/vm"
 	"os"
 	"strings"
 )
 
 const imagename = "conscheme.image"
+
 var conschemedirs []string = []string{
 	"/usr/local/share",
 	"/usr/share",
 	// XXX: this might not be a good idea in the long run
 	"./compiler",
 	"."}
+
 const dirsep = "/"
 const pathsep = ":"
 
@@ -47,9 +49,13 @@ func usage() {
 
 func tryimage(fn string) (*vm.Deserializer, error) {
 	f, e := os.OpenFile(fn, os.O_RDONLY, 0666)
-	if e != nil { return nil, e }
+	if e != nil {
+		return nil, e
+	}
 	d, e := vm.NewReader(f)
-	if e != nil { return nil, e }
+	if e != nil {
+		return nil, e
+	}
 	return d, nil
 }
 
@@ -73,9 +79,11 @@ func findimage() *vm.Deserializer {
 		dirs = strings.Split(search, pathsep)
 	}
 
-	for i := range(dirs) {
-		d, e := tryimage(fmt.Sprintf("%s%s%s",dirs[i],dirsep,imagename))
-		if e == nil { return d }
+	for i := range dirs {
+		d, e := tryimage(fmt.Sprintf("%s%s%s", dirs[i], dirsep, imagename))
+		if e == nil {
+			return d
+		}
 	}
 
 	return nil

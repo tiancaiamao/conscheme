@@ -24,24 +24,24 @@
 package vm
 
 import (
-	"io"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
-	"encoding/binary"
 )
 
 const (
-	Integer = 0
-	Pair	= 1
-	Vector	= 2
-	Null	= 3
-	String	= 4
-	Symbol	= 5
-	Boolean	= 6
-	Char	= 7
-	Rational = 8
-	Float64 = 9
+	Integer    = 0
+	Pair       = 1
+	Vector     = 2
+	Null       = 3
+	String     = 4
+	Symbol     = 5
+	Boolean    = 6
+	Char       = 7
+	Rational   = 8
+	Float64    = 9
 	Complex128 = 10
 	// Comp = 11
 	Bytevector = 12
@@ -50,19 +50,19 @@ const (
 const Version = 1
 
 type Deserializer struct {
-	r io.Reader
+	r       io.Reader
 	version byte
 }
 
-func (d *Deserializer) readMagic() (error) {
+func (d *Deserializer) readMagic() error {
 	s := "conscheme serialized object format\n"
-	buf := make([]byte, len (s))
+	buf := make([]byte, len(s))
 	_, e := io.ReadFull(d.r, buf)
 	if e != nil {
-		return e;
+		return e
 	}
 	if s != string(buf) {
-		return errors.New("wrong format on byte header");
+		return errors.New("wrong format on byte header")
 	}
 	return nil
 }
@@ -79,13 +79,13 @@ func (d *Deserializer) readInt() *big.Int {
 	sign := buf[0]
 	v := big.NewInt(0)
 	tmp := big.NewInt(0)
-	for i := uint(0); ;i += 7 {
-		io.ReadFull(d.r,buf[0:1])
+	for i := uint(0); ; i += 7 {
+		io.ReadFull(d.r, buf[0:1])
 		tmp = tmp.SetInt64(int64(buf[0] & 0x7F))
 		tmp = tmp.Lsh(tmp, i)
-		v = v.Or(v,tmp)
+		v = v.Or(v, tmp)
 		if (buf[0] & 0x80) == 0 {
-			break;
+			break
 		}
 	}
 	if sign == 1 {
@@ -105,12 +105,12 @@ func (d *Deserializer) ReadObject() Obj {
 	length := d.readInt()
 	switch tag {
 	case Integer:
-		if length.Cmp(fixnum_min_Int)<0 || length.Cmp(fixnum_max_Int)>0 {
+		if length.Cmp(fixnum_min_Int) < 0 || length.Cmp(fixnum_max_Int) > 0 {
 			return length
 		}
 		return Make_fixnum(int(length.Int64()))
 	case Rational:
-		i := big.NewRat(1,1)
+		i := big.NewRat(1, 1)
 		return wrap(i.SetFrac(length, d.readInt()))
 	case Float64:
 		var v float64
@@ -123,14 +123,14 @@ func (d *Deserializer) ReadObject() Obj {
 	case Pair:
 		o1 := d.ReadObject()
 		o2 := d.ReadObject()
-		return Cons(o1,o2)
+		return Cons(o1, o2)
 	case Vector:
 		l := length.Int64() // fix
-		obj := Make_vector(Make_fixnum(int(l)),Void)
+		obj := Make_vector(Make_fixnum(int(l)), Void)
 		var i int64 = 0
 		for ; i < l; i++ {
 			t := d.ReadObject()
-			Vector_set_ex(obj,Make_fixnum(int(i)),t)
+			Vector_set_ex(obj, Make_fixnum(int(i)), t)
 		}
 		return obj
 	case Null:
@@ -163,8 +163,8 @@ func NewReader(r io.Reader) (*Deserializer, error) {
 	d := new(Deserializer)
 	d.r = r
 	if e := d.readMagic(); e != nil {
-		return nil,e
+		return nil, e
 	}
 	d.readVersion()
-	return d,nil
+	return d, nil
 }
