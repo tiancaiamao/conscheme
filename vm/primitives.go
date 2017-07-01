@@ -205,15 +205,15 @@ func evprimn(primop uint32, args []Obj, ct Obj) Obj {
 	case 58: // $global-set!
 		name := args[0]
 		value := args[1]
-		sname := (name).(string)
+		sname := (name).(*ScmSym)
 		env[sname] = value
 		return Void
 	case 57: // $global-ref
 		name := args[0]
-		sname := (name).(string)
+		sname := (name).(*ScmSym)
 		v, def := env[sname]
 		if !def {
-			panic(fmt.Sprintf("undefined top-level variable: %s", sname))
+			panic(fmt.Sprintf("undefined top-level variable: %s", scm2str(name)))
 		}
 		return v
 	case 56: // $cell-set!

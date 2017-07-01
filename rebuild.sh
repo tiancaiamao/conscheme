@@ -8,7 +8,7 @@ set -ex
 
 go build
 pushd compiler
-../conscheme -boot conscheme.image.pre-built bytecode-compile
+time ../conscheme -boot conscheme.image.pre-built bytecode-compile
 ../conscheme -boot conscheme.image genprim > ../vm/primitives.go
 cp -f conscheme.image conscheme.image.pre-built
 popd

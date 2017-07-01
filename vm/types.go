@@ -29,7 +29,7 @@
 // *[2]Obj      pair
 // *big.Int     bignum
 // *big.Rat     ratnum
-// string       symbol
+// ScmSym       symbol
 // bool         boolean
 // int          fixnum
 // ScmChar      char
@@ -47,7 +47,7 @@ import (
 type Obj interface{}
 
 func wrap(x interface{}) Obj {
-	return Obj(x)
+	return x
 }
 
 type SuiGeneris struct {
@@ -56,6 +56,10 @@ type SuiGeneris struct {
 
 type ScmChar struct {
 	codepoint rune
+}
+
+type ScmSym struct {
+	str string
 }
 
 // Constants.
@@ -204,7 +208,6 @@ func Floyd(x Obj) Obj {
 			return False
 		}
 	}
-	return False
 }
 
 // Vectors
@@ -311,7 +314,7 @@ func intern(x string) Obj {
 
 func symbol_p(x Obj) Obj {
 	switch (x).(type) {
-	case string:
+	case *ScmSym:
 		return True
 	}
 	return False
@@ -325,26 +328,31 @@ func getsym(str string) (Obj, bool) {
 }
 
 func String_to_symbol(x Obj) Obj {
-	str := string((x).([]rune))
+	str := string(x.([]rune))
 	sym, is_interned := getsym(str)
 	if is_interned {
 		return sym
 	}
+
 	// Intern the new symbol
 	symlock.Lock()
 	defer symlock.Unlock()
-	sym = wrap(str)
-	symtab[str] = sym
-	return sym
+	newsym := &ScmSym{string(x.([]rune))}
+	symtab[str] = newsym
+
+	return newsym
+}
+
+func scm2str(x Obj) string {
+	return x.(*ScmSym).str
 }
 
 func Symbol_to_string(x Obj) Obj {
 	if symbol_p(x) == False {
 		panic("bad type")
 	}
-	v := (x).(string)
 
-	return ([]rune)(v)
+	return ([]rune)(x.(*ScmSym).str)
 }
 
 // Object printer (for debugging)

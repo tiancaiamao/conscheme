@@ -49,6 +49,12 @@
 (check (apply + '(1 2)) => 3)
 (check (apply symbol? '(primitive-procedure-test)) => #t)
 
+(check (let* ((x 'x)
+              (xs (symbol->string x)))
+         (string-set! xs 0 #\g)
+         (symbol->string x))
+       => "x")
+
 ;; Some tests from the R6RS
 (check `(list ,(+ 1 2) 4) => '(list 3 4))
 

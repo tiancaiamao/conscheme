@@ -91,7 +91,7 @@ func _validate_header_version(header Obj) {
 		prop := car(h)
 		name := car(prop)
 		value := cdr(prop)
-		if (name).(string) == "bytecode" {
+		if scm2str(name) == "bytecode" {
 			version = number_to_int(value)
 			break
 		}
@@ -147,7 +147,7 @@ func _bytecode_load(fn Obj) Obj {
 // should there just be a lock around it? One possible optimization:
 // this is used for $global-set! and $global-ref, so it is probably
 // beneficial to map names to locations at compile-time.
-var env map[string]Obj = make(map[string]Obj)
+var env map[*ScmSym]Obj = make(map[*ScmSym]Obj)
 
 type Procedure struct {
 	name     string
@@ -320,7 +320,7 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 		case CLOSURE_NAME:
 			p := (stack.regs[i&OP1_R2]).(*Procedure)
 			name := stack.regs[(i&OP1_R1)>>OP1_R1_SHIFT]
-			p.name = (name).(string)
+			p.name = scm2str(name)
 		case CLOSURE_VAR:
 			p := (stack.regs[i&OP1_R2]).(*Procedure)
 			value := stack.regs[(i&OP1_R1)>>OP1_R1_SHIFT]

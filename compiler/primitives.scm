@@ -397,10 +397,10 @@
 
 (define-operation $global-ref
   (list (string-append "name := " (argn 0))
-        "sname := (name).(string)"
+        "sname := (name).(*ScmSym)"
         "v, def := env[sname]"
         "if !def {"
-        "\tpanic(fmt.Sprintf(\"undefined top-level variable: %s\", sname))"
+        "\tpanic(fmt.Sprintf(\"undefined top-level variable: %s\", scm2str(name)))"
         "}"
         "return v"))
 (define-primitive ($global-ref name))
@@ -408,7 +408,7 @@
 (define-operation $global-set!
   (list (string-append "name := " (argn 0))
         (string-append "value := " (argn 1))
-        "sname := (name).(string)"
+        "sname := (name).(*ScmSym)"
         "env[sname] = value"
         "return Void"))
 (define-primitive ($global-set! name value))
