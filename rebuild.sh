@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Rebuild the boot image and primitives.go.
 
 # This can be used to get access to new primitives written in Go. See

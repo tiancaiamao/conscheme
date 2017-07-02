@@ -114,5 +114,5 @@
       ((member "genprim" (command-line))
        (print-operations (current-output-port)))
       (else
-       (display "Usage: main [compile|bytecode-compile|genprim].\n")
+       (display "Usage: conscheme [bytecode-compile|genprim].\n")
        (exit 1)))

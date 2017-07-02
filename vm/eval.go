@@ -41,7 +41,7 @@ func ap(oproc Obj, args []Obj, ct Obj) Obj {
 	}
 }
 
-// Implements the apply primitive
+// XXX: Legacy implementation for the apply bytecode op
 func apply(args []Obj, ct Obj) Obj {
 	var funargs []Obj
 	fun := args[0]

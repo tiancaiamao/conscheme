@@ -154,7 +154,7 @@
                                 (if (= (length (car c)) 1)
                                     (list (list 'eq? tmp (list 'quote (caar c)))
                                           (cons 'begin (cdr c)))
-                                    (list (list 'memq tmp (list 'quote (car c)))
+                                    (list (list 'memv tmp (list 'quote (car c)))
                                           (cons 'begin (cdr c)))))
                                (else
                                 (list (list 'memv tmp (list 'quote (car c)))

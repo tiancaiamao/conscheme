@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	//"runtime/debug"
 )
 
 // When GOMAXPROCS is larger than 1, we apparently need to implement
@@ -55,6 +56,8 @@ const (
 	CLOSURE_LABEL = 16
 	PRIMCALL      = 17
 	PRIMREF       = 18
+	APPLYCALL     = 19
+	TAILAPPLY     = 20
 
 	// Instruction fields
 	I_SHIFT      = 27
@@ -184,7 +187,6 @@ type Frame struct {
 type Argstack []Obj
 
 func (s *Argstack) Push(v Obj) {
-	// XXX: check if the array is out of capacity..?
 	*s = append(*s, v)
 }
 
@@ -256,6 +258,7 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 		if err := recover(); err != nil {
 			fmt.Printf("Error in Scheme code: %v\n", err)
 			stack_trace(stack)
+			//debug.PrintStack()
 			panic("no error recovery yet")
 		}
 	}()
@@ -291,6 +294,7 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 			// TODO: use this to check that the required
 			// number of arguments were passed
 			continue
+
 		case RETURN:
 			v := stack.regs[i&OP1_R2]
 			if stack.up == nil {
@@ -304,32 +308,40 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 			// fmt.Printf("\n")
 			stack = stack.up
 			stack.regs[rreg] = v
+
 		case PUSH:
 			//fmt.Printf("pushing reg %d on argument stack", i & OP1_R2)
 			argstack.Push(stack.regs[i&OP1_R2])
+
 		case MOVE:
 			src := (i & OP1_R1) >> OP1_R1_SHIFT
 			dst := (i & OP1_R2)
 			stack.regs[dst] = stack.regs[src]
+
 		case MAKE_VOID:
 			dst := (i & OP1_R2)
 			stack.regs[dst] = Void
+
 		case CLOSURE:
 			f := make([]Obj, (i&OP1_N)>>OP1_N_SHIFT)
 			stack.regs[i&OP1_R2] = wrap(&Procedure{apply: aprun, free: f, code: stack.code})
+
 		case CLOSURE_NAME:
 			p := (stack.regs[i&OP1_R2]).(*Procedure)
 			name := stack.regs[(i&OP1_R1)>>OP1_R1_SHIFT]
 			p.name = scm2str(name)
+
 		case CLOSURE_VAR:
 			p := (stack.regs[i&OP1_R2]).(*Procedure)
 			value := stack.regs[(i&OP1_R1)>>OP1_R1_SHIFT]
 			freevar := (i & OP1_N) >> OP1_N_SHIFT
 			p.free[freevar] = value
+
 		case CLOSURE_REF:
 			p := stack.cc
 			freevar := (i & OP1_N) >> OP1_N_SHIFT
 			stack.regs[i&OP1_R2] = p.free[freevar]
+
 		case FUNCALL:
 			// stack_trace(stack)
 			r := int(i & OP1_R2)
@@ -361,17 +373,27 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 			pc = p.label
 			// stack_trace(stack)
 			//fmt.Printf("funcall to %d (%s), new frame = %v\n",pc,p.name,stack)
+
 		case TAILCALL:
 			argnum := int((i & OP1_N) >> OP1_N_SHIFT)
-			_p := stack.regs[i&OP1_R2]
-			p := (_p).(*Procedure)
+			p := stack.regs[i&OP1_R2].(*Procedure)
+			if p.apply == nil {
+				// Tail-call to a primitive procedure.
+				args := make([]Obj, argnum)
+				for i := argnum - 1; i >= 0; i-- {
+					args[i] = argstack.Pop()
+				}
+				v := apprim(p, args, ct)
+				rreg := stack.rreg
+				pc = stack.savedpc
+				stack = stack.up
+				stack.regs[rreg] = v
+				continue
+			}
 			dst_i := p.code.bc[p.label]
 			if (dst_i >> I_SHIFT) != FRAME {
 				panic(fmt.Sprintf("Procedure at #x%x has no FRAME: #x%x",
 					p.label, i))
-			}
-			if p.apply == nil {
-				panic("tail-call to primitive")
 			}
 			tail_frame(stack, argnum+int(dst_i&OP1_R2))
 			for i := argnum - 1; i >= 0; i-- {
@@ -382,6 +404,7 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 			stack.code = p.code
 			pc = p.label
 			//fmt.Printf("tailcall to %d, new frame = %v\n",pc,stack)
+
 		case CONSARGS:
 			// Called at the very start of procedures with
 			// rest arguments. n is how many variables are
@@ -393,6 +416,86 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 				stack.regs[i] = Void
 			}
 			stack.regs[n-1] = rest
+
+		case APPLYCALL:
+			r := int(i & OP1_R2)
+			argnum := int((i & OP1_N) >> OP1_N_SHIFT)
+			p := stack.regs[(i&OP1_R1)>>OP1_R1_SHIFT].(*Procedure)
+
+			restargs := argstack.Pop()
+			restlen := fixnum_to_int(Length(restargs))
+			if p.apply == nil {
+				// This is a primitive.
+				args := make([]Obj, argnum+restlen)
+				for i := argnum - 1; i >= 0; i-- {
+					args[i] = argstack.Pop()
+				}
+				for i := argnum; restargs != Eol; i++ {
+					args[i] = car(restargs)
+					restargs = cdr(restargs)
+				}
+				stack.regs[r] = apprim(p, args, ct)
+				continue
+			}
+			dst_i := p.code.bc[p.label]
+			if (dst_i >> I_SHIFT) != FRAME {
+				panic(fmt.Sprintf("Procedure %s at #x%x has no FRAME: #x%x",
+					p.name, p.label, i))
+			}
+			frame := call_frame(stack, r, pc, argnum+restlen+int((dst_i&OP1_R2)))
+			for i := argnum - 1; i >= 0; i-- {
+				frame.regs[i] = argstack.Pop()
+			}
+			for i := argnum; restargs != Eol; i++ {
+				frame.regs[i] = car(restargs)
+				restargs = cdr(restargs)
+			}
+			frame.cc = p
+			frame.argnum = argnum + restlen
+			frame.code = p.code
+			stack = frame
+			pc = p.label
+
+		case TAILAPPLY:
+			argnum := int((i & OP1_N) >> OP1_N_SHIFT)
+			p := stack.regs[i&OP1_R2].(*Procedure)
+			restargs := argstack.Pop()
+			restlen := fixnum_to_int(Length(restargs))
+			if p.apply == nil {
+				// This is a primitive.
+				args := make([]Obj, argnum+restlen)
+				for i := argnum - 1; i >= 0; i-- {
+					args[i] = argstack.Pop()
+				}
+				for i := argnum; restargs != Eol; i++ {
+					args[i] = car(restargs)
+					restargs = cdr(restargs)
+				}
+				v := apprim(p, args, ct)
+				rreg := stack.rreg
+				pc = stack.savedpc
+				stack = stack.up
+				stack.regs[rreg] = v
+				continue
+			}
+			dst_i := p.code.bc[p.label]
+			if (dst_i >> I_SHIFT) != FRAME {
+				panic(fmt.Sprintf("Procedure %s at #x%x has no FRAME: #x%x",
+					p.name, p.label, i))
+			}
+			tail_frame(stack, argnum+restlen+int((dst_i&OP1_R2)))
+			for i := argnum - 1; i >= 0; i-- {
+				stack.regs[i] = argstack.Pop()
+			}
+			for i := argnum; restargs != Eol; i++ {
+				stack.regs[i] = car(restargs)
+				restargs = cdr(restargs)
+			}
+			stack.cc = p
+			stack.argnum = argnum + restlen
+			stack.code = p.code
+			pc = p.label
+
 		// op2 format
 		case JUMP:
 			disp := (i & OP2_N) >> OP2_N_SHIFT
@@ -402,6 +505,7 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 			pc = abs
 		case CONST_REF:
 			stack.regs[i&OP2_R] = stack.code.consts[(i&OP2_N)>>OP2_N_SHIFT]
+
 		case CLOSURE_LABEL:
 			p := (stack.regs[i&OP2_R]).(*Procedure)
 			disp := (i & OP2_N) >> OP2_N_SHIFT
@@ -410,6 +514,7 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 			// 	disp, int17(disp), pc-1+int17(disp))
 			abs := pc - 1 + int17(disp)
 			p.label = abs
+
 		case BF:
 			v := stack.regs[i&OP2_R]
 			if v != False {
@@ -421,6 +526,7 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 			// convert to signed:
 			abs := pc - 1 + int17(disp)
 			pc = abs
+
 		// op3 format
 		case PRIMCALL:
 			r := i & OP3_R
@@ -438,6 +544,7 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 		case PRIMREF:
 			r := i & OP3_R
 			stack.regs[r] = primitive[(i&OP3_N2)>>OP3_N2_SHIFT]
+
 		// unknown opcodes
 		default:
 			panic(fmt.Sprintf("Unimplemented bytecode op: #b%b (in #x%x)",
@@ -447,20 +554,16 @@ func run(ct Obj, stack *Frame, argstack *Argstack) Obj {
 }
 
 func aprun(proc *Procedure, args []Obj, ct Obj) Obj {
-	// This is only called from apply. This unfortunately means that
-	// apply breaks TCO. It also breaks stack traces. TODO: do this
-	// properly.
+	// This is called to apply a procedure from inside Go code.
 	i := proc.code.bc[proc.label]
 	if (i >> I_SHIFT) != FRAME {
 		panic(fmt.Sprintf("First instruction is not FRAME: %d", i))
 	}
-	// fmt.Printf("aprun makes a new stack :(\n")
 	stack := start_frame(len(args)+int(i&OP1_R2), proc.code)
 	stack.savedpc = proc.label
 	stack.cc = proc
 	stack.argnum = len(args)
 	copy(stack.regs, args)
-	// stack_trace(stack)
 	argstack := make(Argstack, 16)
 
 	return run(ct, stack, &argstack)

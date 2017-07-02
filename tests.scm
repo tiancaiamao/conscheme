@@ -48,6 +48,10 @@
 (check (apply list 1 2 '(3 4)) => '(1 2 3 4))
 (check (apply + '(1 2)) => 3)
 (check (apply symbol? '(primitive-procedure-test)) => #t)
+(check (apply (lambda (x y . z) (vector x y z)) 1 2 '(3 4)) => '#(1 2 (3 4)))
+(check (apply (lambda (x y . z) (vector x y z)) '(1 2)) => '#(1 2 ()))
+(check (apply apply (list list (list 'apply 'list))) => '(apply list))
+(check (let* ((SYMBOL? symbol?) (x (lambda (y) (SYMBOL? y)))) (x 'y)) => #t)
 
 (check (let* ((x 'x)
               (xs (symbol->string x)))

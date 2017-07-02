@@ -266,8 +266,6 @@ func string_p(x Obj) Obj {
 }
 
 func String_string(s string) Obj {
-	// rune := ([]rune)(s)
-	// var vv interface{} = rune
 	return ([]rune)(s)
 }
 

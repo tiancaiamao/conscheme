@@ -84,7 +84,23 @@
 (define (even? x)
   (eq? 0 (bitwise-and x 1)))
 
-;; max min
+(define (max x . x*)
+  (define (f x x*)
+    (cond ((null? x*) x)
+          ((> x (car x*))
+           (f x (cdr x*)))
+          (else
+           (f (car x*) (cdr x*)))))
+  (f x x*))
+
+(define (min x . x*)
+  (define (f x x*)
+    (cond ((null? x*) x)
+          ((< x (car x*))
+           (f x (cdr x*)))
+          (else
+           (f (car x*) (cdr x*)))))
+  (f x x*))
 
 (define (+ x y) ($+ x y))
 
@@ -240,12 +256,15 @@
 ;;; Characters
 
 (define-macro (define-char-order name =)
-  (list 'define name
-        (list 'lambda '(x y . xs)
-              (list 'if '(null? xs)
-                    (list = '(char->integer x) '(char->integer y))
-                    (list 'apply = '(char->integer x) '(char->integer y)
-                          '(map char->integer xs))))))
+  `(define ,name
+     (lambda (x y . x*)
+       (if (null? x*)
+           (,= (char->integer x) (char->integer y))
+           (if (null? (cdr x*))
+               (and (,= (char->integer x) (char->integer y))
+                    (,= (char->integer y) (char->integer (car x*))))
+               (apply ,= (char->integer x) (char->integer y)
+                      (map char->integer x*)))))))
 
 (define-char-order char=? =)
 (define-char-order char<? <)
@@ -380,6 +399,12 @@
 
 ;; call-with-current-continuation call/cc
 ;; dynamic-wind
+
+(define (apply proc . rest)
+  ($apply proc (let lp ((rest rest))
+                 (if (null? (cdr rest))
+                     (car rest)
+                     (cons (car rest) (lp (cdr rest)))))))
 
 ;; This is not really how it's supposed to be done:
 (define (values . x)

@@ -75,6 +75,7 @@
     (string-set! . 44)
     (make-string . 45)
     (apply . 46)
+    ($apply . 46)
     (procedure? . 47)
     (unspecified . 48)
     (eof-object . 49)
@@ -212,8 +213,9 @@
   (display "import \"fmt\"\n" p)
   (display "import \"os\"\n" p)
   (newline p)
-  (display (string-append "var primitive [" (number->string
-                                             (length *primitive-numbers*)) "]Obj\n") p)
+  (display (string-append "var primitive ["
+                          (number->string (+ 1 (apply max (map cdr *primitive-numbers*))))
+                          "]Obj\n") p)
   (newline p)
   (display "func init() {\n" p)
   (for-each (lambda (prim)
@@ -340,9 +342,9 @@
 
 ;; Misc
 
-(define-operation apply
+(define-operation apply                 ;legacy bytecode
   (list (string-append "return apply(" (all-args) ", " (ct) ")")))
-(define-primitive (apply fun . args))
+(define-primitive ($apply fun . args))
 
 (define-call procedure? "procedure_p" 1)
 
@@ -514,6 +516,9 @@
          (list 'set! (set!-name x) (primops (set!-expression x))))
         (else
          (let ((primop (and (pair? x) (lookup-primop (car x)))))
-           (if primop
-               (primcall primop (car x) (map (lambda (x) (primops x)) (cdr x)))
-               (cons '$funcall (map (lambda (x) (primops x)) x))))))))
+           (cond (primop
+                  (primcall primop (car x) (map (lambda (x) (primops x)) (cdr x))))
+                 ((eq? (car x) 'apply)
+                  (primcall (lookup-primop '$apply) '$apply (map (lambda (x) (primops x)) (cdr x))))
+                 (else
+                  (cons '$funcall (map (lambda (x) (primops x)) x)))))))))

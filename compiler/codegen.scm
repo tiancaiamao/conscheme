@@ -1,5 +1,5 @@
 ;; -*- mode: scheme; coding: utf-8 -*-
-;; Copyright (C) 2011 Göran Weinholt <goran@weinholt.se>
+;; Copyright (C) 2011, 2017 Göran Weinholt <goran@weinholt.se>
 
 ;; Permission is hereby granted, free of charge, to any person obtaining a copy
 ;; of this software and associated documentation files (the "Software"), to deal
@@ -47,6 +47,8 @@
 (define CONSARGS      #b01100)          ; n
 (define CLOSURE.VAR   #b01101)          ; reg1 n reg2
 (define FUNCALL       #b01110)          ; reg1 reg2 n
+(define APPLYCALL     #b10011)          ; reg1 reg2 n
+(define TAILAPPLY     #b10100)          ; reg n
 
 ;; IIII INNN NNNN NNNN NNNN NNrr rrrr rrrr
 (define (op2 i n r)
@@ -181,22 +183,31 @@
     (emit (list 'primcall r name ai))
     r))
 
+(define (cg-apply tail? f ai emit s)
+  ;; (print "#;cg-apply " tail? #\space ai)
+  (let ((r (cg-reg s)))
+    (if tail?
+        (let ()
+          (emit (list 'tailapply f (- ai 1)))
+          (emit (list 'make-void r)))
+        (emit (list 'applycall r f (- ai 1))))
+    r))
+
 (define (cg-primitive name emit s)
   (let ((r (cg-reg s)))
     (emit (list 'primref r name))
     r))
 
 (define (cg-frame-start emit s)
-  ;; emit a instruction that will be modified by cg-frame-end
+  ;; Emit an instruction that will be modified by cg-frame-end
   (let ((frame (list 'frame 'n)))
     (vector-set! s 4 frame)
     (emit frame)))
 
 (define (cg-frame-end s)
-  ;; record the number of the highest used register
+  ;; Record the number of the highest used register
   (set-car! (cdr (vector-ref s 4))
             (cg-reg s)))
-
 
 (define (codegen* x emit s tail?)
   ;; (display (list 'codegen* x)) (newline)
@@ -313,25 +324,35 @@
                                 (and tail? (null? (cdr body)))))))))
         (($funcall $primcall)
          ;; Call to a primitive, a tail-call or a normal call.
-         (let lp ((args (cddr x))
-                  (ai 0))
-           (cond ((null? args)
-                  (if (eq? (car x) '$primcall)
-                      (cg-primcall (cadr x) ai emit s)
-                      (let ((f (codegen* (cadr x) emit s #f)))
-                        (cond (tail?
-                               (emit (list 'tailcall f ai))
-                               (let ((r (cg-reg s)))
-                                 (emit (list 'make-void r))
-                                 r))
-                              (else
-                               (let ((r (cg-reg s)))
-                                 (emit (list 'funcall r f ai))
-                                 r))))))
-                 (else
-                  (emit (list 'push (codegen* (car args) emit s #f)))
-                  (lp (cdr args)
-                      (+ ai 1))))))
+         (letrec ((push-arguments
+                   (lambda (arg*)
+                     (do ((arg* arg* (cdr arg*))
+                          (ai 0 (+ ai 1)))
+                         ((null? arg*) ai)
+                       (emit (list 'push (codegen* (car arg*) emit s #f)))))))
+           (let ((operator (cadr x))
+                 (operand* (cddr x)))
+             (if (eq? (car x) '$primcall)
+                 (cond
+                   ((eq? operator '$apply) (pair? operand*)
+                    (let* ((f (codegen* (car operand*) emit s #f))
+                           (ai (push-arguments (cdr operand*))))
+                      (cg-apply tail? f ai emit s)))
+                   (else
+                    (let ((ai (push-arguments operand*)))
+                      (cg-primcall operator ai emit s))))
+                 (let* ((ai (push-arguments operand*))
+                        (f (codegen* operator emit s #f)))
+                   (cond
+                     (tail?
+                      (emit (list 'tailcall f ai))
+                      (let ((r (cg-reg s)))
+                        (emit (list 'make-void r))
+                        r))
+                     (else
+                      (let ((r (cg-reg s)))
+                        (emit (list 'funcall r f ai))
+                        r))))))))
         (else
          (error 'codegen* "Bad expression" x)))))
 
@@ -375,6 +396,8 @@
         ((consargs) (put (op1 CONSARGS (cadr i) 0 0)))
         ((closure.var) (put (op1 CLOSURE.VAR (caddr i) (cadddr i) (cadr i))))
         ((funcall) (put (op1 FUNCALL (cadddr i) (caddr i) (cadr i))))
+        ((applycall) (put (op1 APPLYCALL (cadddr i) (caddr i) (cadr i))))
+        ((tailapply) (put (op1 TAILAPPLY (caddr i) 0 (cadr i))))
         ;; op2 format
         ((jump)
          (let* ((name (cadr i)) (dst (cdr (assq name labels))))

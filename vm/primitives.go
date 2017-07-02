@@ -64,7 +64,7 @@ func init() {
 	primitive[49] = wrap(&Procedure{name: "eof-object", required: 0, apply: nil, label: 49})
 	primitive[48] = wrap(&Procedure{name: "unspecified", required: 0, apply: nil, label: 48})
 	primitive[47] = wrap(&Procedure{name: "procedure?", required: 1, apply: nil, label: 47})
-	primitive[46] = wrap(&Procedure{name: "apply", required: 1, apply: nil, label: 46})
+	primitive[46] = wrap(&Procedure{name: "$apply", required: 1, apply: nil, label: 46})
 	primitive[45] = wrap(&Procedure{name: "make-string", required: 1, apply: nil, label: 45})
 	primitive[44] = wrap(&Procedure{name: "string-set!", required: 3, apply: nil, label: 44})
 	primitive[43] = wrap(&Procedure{name: "string-ref", required: 2, apply: nil, label: 43})
