@@ -301,7 +301,7 @@ func evprimn(primop uint32, args []Obj, ct Obj) Obj {
 	case 26: // number?
 		return number_p(args[0])
 	case 25: // vector
-		return wrap(args)
+		return append([]Obj{}, args...)
 	case 24: // vector-set!
 		return Vector_set_ex(args[0], args[1], args[2])
 	case 23: // vector-ref

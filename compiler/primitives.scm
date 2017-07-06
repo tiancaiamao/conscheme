@@ -296,7 +296,7 @@
 (define-call vector-set! "Vector_set_ex" 3)
 
 (define-operation vector
-  (list (string-append "return wrap(" (all-args) ")")))
+  (list (string-append "return append([]Obj{}, " (all-args) "...)")))
 (define-primitive (vector . el))
 
 ;; Numbers
