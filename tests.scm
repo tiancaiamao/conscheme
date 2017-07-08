@@ -71,6 +71,7 @@
 (check `(( foo ,(- 10 3)) ,@(cdr '(c)) . ,(car '(cons)))
        => '((foo 7) . cons))
 
+(define (sqrt x) x)                     ;FIXME
 (check `#(10 5 ,(sqrt 4) ,@(map sqrt '(16 9)) 8)
        => '#(10 5 2 4 3 8))
 

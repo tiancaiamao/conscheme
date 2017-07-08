@@ -75,6 +75,7 @@ type OutputPort struct {
 var stdin, curin, stdout, curout Obj
 
 func init() {
+	// FIXME: per-thread
 	stdin = wrap(&InputPort{r: os.Stdin, is_binary: false})
 	curin = stdin
 
@@ -390,6 +391,11 @@ func write(x, port Obj) Obj {
 	return Void
 }
 
+func open_string_input_port(str Obj) Obj {
+	sink := bytes.NewBufferString(string(str.([]rune)))
+	return &InputPort{r: sink}
+}
+
 // Bytevectors
 
 func bytevector_p(x Obj) Obj {
@@ -425,12 +431,12 @@ func u8_list_to_bytevector(l Obj) Obj {
 }
 
 func string_to_utf8(str Obj) Obj {
-	return wrap([]byte(string((str).([]rune))))
+	return []byte(string((str).([]rune)))
 }
 
 func _open_bytevector_output_port() Obj {
 	var sink bytes.Buffer
-	return wrap(&OutputPort{w: &sink, is_binary: true})
+	return &OutputPort{w: &sink, is_binary: true}
 }
 
 func _bytevector_output_port_extract(p Obj) Obj {
@@ -453,6 +459,17 @@ func Command_line() Obj {
 		ret = Cons(wrap(arg), ret)
 	}
 	return ret
+}
+
+func Set_command_line(strings Obj) Obj {
+	new_args := []string{}
+	for strings != Eol {
+		new_args = append(new_args, string(car(strings).([]rune)))
+		strings = cdr(strings)
+	}
+	os.Args = new_args
+
+	return Void
 }
 
 func start_cpu_profile(p Obj) Obj {

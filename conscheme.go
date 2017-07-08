@@ -25,7 +25,9 @@ import (
 	"flag"
 	"fmt"
 	"github.com/weinholt/conscheme/vm"
+	"log"
 	"os"
+	"runtime/pprof"
 	"strings"
 )
 
@@ -41,8 +43,12 @@ var conschemedirs []string = []string{
 const dirsep = "/"
 const pathsep = ":"
 
+var boot = flag.String("boot", "", "conscheme boot image file")
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+var memprofile = flag.String("memprofile", "", "write memory profile to this file")
+
 func usage() {
-	fmt.Fprintf(os.Stderr, "Usage: conscheme [OPTION]... [ARGUMENT]...\n")
+	fmt.Fprintf(os.Stderr, "Usage: conscheme [OPTION]... [FILE]...\n")
 	flag.PrintDefaults()
 	os.Exit(1)
 }
@@ -60,10 +66,6 @@ func tryimage(fn string) (*vm.Deserializer, error) {
 }
 
 func findimage() *vm.Deserializer {
-	var boot *string = flag.String("boot", "", "conscheme boot image file")
-	flag.Parse()
-	os.Args = flag.Args()
-
 	if *boot != "" {
 		d, e := tryimage(*boot)
 		if e != nil {
@@ -90,6 +92,31 @@ func findimage() *vm.Deserializer {
 }
 
 func main() {
+	// Parse arguments and pass on some to compiler/main.scm.
+	var script = flag.String("script", "", "run a Scheme script")
+	var eval_expr = flag.String("c", "", "eval expression and exit")
+	flag.Parse()
+	os.Args = flag.Args()
+	// The first element in os.Args is always the script to run. If "" then REPL.
+	if *script != "" {
+		os.Args = append([]string{*script}, os.Args...)
+	} else if len(os.Args) == 0 {
+		os.Args = append(os.Args, "")
+	}
+	if *eval_expr != "" {
+		os.Args = append([]string{os.Args[0], "-c", *eval_expr}, os.Args[1:]...)
+	}
+
+	if *cpuprofile != "" {
+		// https://blog.golang.org/profiling-go-programs
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+
 	d := findimage()
 	if d == nil {
 		fmt.Fprintf(os.Stderr, "Can't find the conscheme.image file\n")
@@ -100,4 +127,14 @@ func main() {
 	// vm.Write(header)
 	// fmt.Print("\n")
 	vm.Conscheme(header, code)
+
+	if *memprofile != "" {
+		// https://blog.golang.org/profiling-go-programs
+		f, err := os.Create(*memprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.WriteHeapProfile(f)
+		f.Close()
+	}
 }

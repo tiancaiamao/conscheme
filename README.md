@@ -60,20 +60,19 @@ these commands:
 
 ```
 $ cd compiler/
-$ ../conscheme -boot conscheme.image.pre-built bytecode-compile
+$ ../conscheme -boot ./conscheme.image.pre-built -c '(compile-bytecode "main.scm" "conscheme.image")'
 ```
 
-It might take a minute to run the compiler. The new image is now in
-conscheme.image and you no longer need to give the -boot parameter.
-Conscheme searches for the image in a few well-known locations, see
-conscheme.go for details.
+The new image is now in conscheme.image and you no longer need to give
+the -boot parameter. Conscheme searches for the image in a few
+well-known locations, see conscheme.go for details.
 
 Whenever you add new primitive procedures you need to regenerate
 vm/primitives.go and recompile the conscheme package. This can be done
 this way:
 
 ```
-$ ../conscheme genprim
+$ ../conscheme -c '(print-operations (current-output-port))' > ../vm/primitives.go
 ```
 
 Conscheme can also be built by running the compiler in another Scheme.
@@ -81,5 +80,5 @@ During development we used GNU Guile 2.0. You might use this command
 to build conscheme.image with Guile:
 
 ```
-$ guile ./main.scm bytecode-compile
+$ guile ./main.scm -c '(compile-bytecode "main.scm" "conscheme.image")'
 ```

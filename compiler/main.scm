@@ -36,11 +36,16 @@
 
 (cond-expand
  (guile (use-modules (ice-9 pretty-print)
-                     (srfi srfi-1)))
- (else (define (pretty-print x)
-         (write x)
-         (newline))
-       (thread-queue-set! (current-thread) (make-queue))))
+                     (srfi srfi-1))
+        (set! command-line
+              (let ((args (command-line)))
+                (case-lambda
+                  (() args)
+                  ((new-args) (set! args new-args))))))
+ (conscheme (define (pretty-print x)
+              (write x)
+              (newline))
+            (thread-queue-set! (current-thread) (make-queue))))
 
 (define (top-level-cps x)
   ;; Convert the top level to cps form (because we shamefully don't
@@ -107,12 +112,21 @@
                      (newline))
                    (loop (+ i 1))))))))))
 
-(cond ((null? (command-line))
-       (repl))
-      ((member "bytecode-compile" (command-line))
-       (compile-bytecode-main))
-      ((member "genprim" (command-line))
-       (print-operations (current-output-port)))
+(let* ((args (command-line))
+       (run (if (string=? (car args) "")
+                repl
+                (lambda ()
+                  (load (car args))))))
+  (let lp ((args (cdr (command-line))))
+    (cond
+      ((null? args)
+       (run))
+      ((and (string=? (car args) "-c") (pair? (cdr args)))
+       ;; FIXME: This can eat the -c that is intended for a script, unfortunately.
+       (let* ((expr (cadr args))
+              (code (call-with-port (open-string-input-port expr) read)))
+         (command-line (cons (car (command-line)) (cddr args)))
+         (eval code (interaction-environment))
+         (exit 0)))
       (else
-       (display "Usage: conscheme [bytecode-compile|genprim].\n")
-       (exit 1)))
+       (run)))))

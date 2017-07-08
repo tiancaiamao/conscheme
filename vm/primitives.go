@@ -5,7 +5,7 @@ package vm
 import "fmt"
 import "os"
 
-var primitive [104]Obj
+var primitive [105]Obj
 
 func init() {
 	primitive[98] = wrap(&Procedure{name: "stop-cpu-profile", required: 0, apply: nil, label: 98})
@@ -36,6 +36,7 @@ func init() {
 	primitive[75] = wrap(&Procedure{name: "close-output-port", required: 1, apply: nil, label: 75})
 	primitive[74] = wrap(&Procedure{name: "close-input-port", required: 1, apply: nil, label: 74})
 	primitive[73] = wrap(&Procedure{name: "open-file-output-port", required: 1, apply: nil, label: 73})
+	primitive[104] = wrap(&Procedure{name: "open-string-input-port", required: 1, apply: nil, label: 104})
 	primitive[99] = wrap(&Procedure{name: "open-output-file", required: 1, apply: nil, label: 99})
 	primitive[72] = wrap(&Procedure{name: "open-input-file", required: 1, apply: nil, label: 72})
 	primitive[71] = wrap(&Procedure{name: "delete-file", required: 1, apply: nil, label: 71})
@@ -172,6 +173,8 @@ func evprimn(primop uint32, args []Obj, ct Obj) Obj {
 		return close_input_port(args[0])
 	case 73: // open-file-output-port
 		return open_file_output_port(args[0])
+	case 104: // open-string-input-port
+		return open_string_input_port(args[0])
 	case 99: // open-output-file
 		return open_output_file(args[0])
 	case 72: // open-input-file
@@ -235,7 +238,12 @@ func evprimn(primop uint32, args []Obj, ct Obj) Obj {
 	case 53: // $bytecode-run
 		return _bytecode_run(args[0], args[1], args[2])
 	case 52: // command-line
-		return Command_line()
+		switch len(args) {
+		default:
+			return Command_line()
+		case 1:
+			return Set_command_line(args[0])
+		}
 	case 51: // exit
 		os.Exit(number_to_int(args[0]))
 		return Void

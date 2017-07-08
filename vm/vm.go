@@ -175,13 +175,13 @@ type Code struct {
 }
 
 type Frame struct {
-	up      *Frame
-	rreg    int
-	savedpc int
-	argnum  int // for CONSARGS
-	regs    []Obj
-	cc      *Procedure
-	code    *Code
+	up      *Frame     // caller's stack frame
+	rreg    int        // return register, in caller's frame
+	savedpc int        // saved program counter
+	argnum  int        // number of arguments passed (for CONSARGS)
+	regs    []Obj      // registers
+	cc      *Procedure // current closure
+	code    *Code      // code object
 }
 
 type Argstack []Obj
@@ -416,7 +416,7 @@ func run(ct Obj, stack *Frame) Obj {
 			restlen := fixnum_to_int(Length(restargs))
 			args := argstack[len(argstack)-argnum:]
 			argstack = argstack[:len(argstack)-argnum]
-			for ; restargs != Eol; {
+			for restargs != Eol {
 				args = append(args, car(restargs))
 				restargs = cdr(restargs)
 			}
@@ -445,7 +445,7 @@ func run(ct Obj, stack *Frame) Obj {
 			restlen := fixnum_to_int(Length(restargs))
 			args := argstack[len(argstack)-argnum:]
 			argstack = argstack[:len(argstack)-argnum]
-			for ; restargs != Eol; {
+			for restargs != Eol {
 				args = append(args, car(restargs))
 				restargs = cdr(restargs)
 			}

@@ -132,7 +132,8 @@
     (bitwise-arithmetic-shift-left . 100)
     (thread-queue . 101)
     (thread-queue-set! . 102)
-    ($bytecode-load . 103)))
+    ($bytecode-load . 103)
+    (open-string-input-port . 104)))
 
 (define (primitive-number name)
   (let ((v (assq name *primitive-numbers*)))
@@ -367,7 +368,14 @@
         "return Void"))
 (define-primitive (exit status))
 
-(define-call command-line "Command_line" 0)
+(define-operation command-line
+  (list "switch len(args) {"
+	"default:"
+	"\treturn Command_line()"
+	"case 1:"
+	"\treturn Set_command_line(args[0])"
+	"}"))
+(define-primitive (command-line . rest)) ;one optional argument
 
 (define-call $bytecode-run "_bytecode_run" 3)
 (define-call $bytecode-load "_bytecode_load" 1)
@@ -436,6 +444,7 @@
 (define-call delete-file "delete_file" 1)
 (define-call open-input-file "open_input_file" 1)
 (define-call open-output-file "open_output_file" 1)
+(define-call open-string-input-port "open_string_input_port" 1)
 (define-call open-file-output-port "open_file_output_port" 1) ;TODO: three more arguments
 (define-call close-input-port "close_input_port" 1)
 (define-call close-output-port "close_output_port" 1)
