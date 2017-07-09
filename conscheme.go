@@ -27,6 +27,7 @@ import (
 	"github.com/weinholt/conscheme/vm"
 	"log"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"strings"
 )
@@ -108,12 +109,13 @@ func main() {
 	}
 
 	if *cpuprofile != "" {
-		// https://blog.golang.org/profiling-go-programs
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("could not create CPU profile: ", err)
 		}
-		pprof.StartCPUProfile(f)
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
 		defer pprof.StopCPUProfile()
 	}
 
@@ -129,12 +131,14 @@ func main() {
 	vm.Conscheme(header, code)
 
 	if *memprofile != "" {
-		// https://blog.golang.org/profiling-go-programs
 		f, err := os.Create(*memprofile)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("could not create memory profile: ", err)
 		}
-		pprof.WriteHeapProfile(f)
+		runtime.GC() // get up-to-date statistics
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			log.Fatal("could not write memory profile: ", err)
+		}
 		f.Close()
 	}
 }

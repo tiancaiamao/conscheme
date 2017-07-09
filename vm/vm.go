@@ -201,30 +201,33 @@ func (s *Argstack) Pop() Obj {
 func start_frame(size int, code *Code) *Frame {
 	// Creates the frame at the top of the stack
 	r := make([]Obj, size)
-	for i := 0; i < size; i++ {
-		r[i] = Void
-	}
 	return &Frame{regs: r, code: code}
 }
 
-func call_frame(up *Frame, rreg, savedpc, size int) *Frame {
+func call_frame(up *Frame, saved_frame **Frame, rreg, savedpc, size int) *Frame {
 	// Creates a new frame for a function call
-	r := make([]Obj, size)
-	for i := 0; i < size; i++ {
-		r[i] = Void
+	if *saved_frame != nil {
+		// Recycles an old call frame for a new call.
+		f := *saved_frame
+		f.up = up
+		f.rreg = rreg
+		f.savedpc = savedpc
+
+		if len(f.regs) < size {
+			f.regs = make([]Obj, size)
+		}
+		*saved_frame = nil
+		return f
 	}
+
+	r := make([]Obj, size)
 	return &Frame{up: up, rreg: rreg, savedpc: savedpc, regs: r}
 }
 
 func tail_frame(f *Frame, n int) {
 	// make room for n args and locals
 	if len(f.regs) < n {
-		nf := make([]Obj, n)
-		copy(nf, f.regs)
-		for i := len(f.regs); i < n; i++ {
-			nf[i] = Void
-		}
-		f.regs = nf
+		f.regs = make([]Obj, n)
 	}
 }
 
@@ -254,11 +257,12 @@ func run(ct Obj, stack *Frame) Obj {
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Printf("Error in Scheme code: %v\n", err)
-			stack_trace(stack)
 			// debug.PrintStack()
+			stack_trace(stack)
 			panic("no error recovery yet")
 		}
 	}()
+	var saved_frame *Frame
 	pc := stack.savedpc
 	cycles := 0
 	argstack := Argstack{}
@@ -298,17 +302,14 @@ func run(ct Obj, stack *Frame) Obj {
 			if stack.up == nil {
 				return v
 			}
-			// stack_trace(stack)
 			rreg := stack.rreg
 			pc = stack.savedpc
-			// fmt.Printf("will return to PC=#x%x in reg %d: ",pc,rreg)
-			// Write(v)
-			// fmt.Printf("\n")
+			saved_frame = stack
 			stack = stack.up
+			saved_frame.up = nil
 			stack.regs[rreg] = v
 
 		case PUSH:
-			//fmt.Printf("pushing reg %d on argument stack", i & OP1_R2)
 			argstack.Push(stack.regs[i&OP1_R2])
 
 		case MOVE:
@@ -322,7 +323,7 @@ func run(ct Obj, stack *Frame) Obj {
 
 		case CLOSURE:
 			f := make([]Obj, (i&OP1_N)>>OP1_N_SHIFT)
-			stack.regs[i&OP1_R2] = wrap(&Procedure{apply: apply_closure, free: f, code: stack.code})
+			stack.regs[i&OP1_R2] = &Procedure{apply: apply_closure, free: f, code: stack.code}
 
 		case CLOSURE_NAME:
 			p := (stack.regs[i&OP1_R2]).(*Procedure)
@@ -341,7 +342,6 @@ func run(ct Obj, stack *Frame) Obj {
 			stack.regs[i&OP1_R2] = p.free[freevar]
 
 		case FUNCALL:
-			// stack_trace(stack)
 			r := int(i & OP1_R2)
 			argnum := int((i & OP1_N) >> OP1_N_SHIFT)
 			_p := stack.regs[(i&OP1_R1)>>OP1_R1_SHIFT]
@@ -358,15 +358,13 @@ func run(ct Obj, stack *Frame) Obj {
 				panic(fmt.Sprintf("Procedure %s at #x%x has no FRAME: #x%x",
 					p.name, p.label, i))
 			}
-			frame := call_frame(stack, r, pc, argnum+int((dst_i&OP1_R2)))
+			frame := call_frame(stack, &saved_frame, r, pc, argnum+int((dst_i&OP1_R2)))
 			copy(frame.regs, args)
 			frame.cc = p
 			frame.argnum = argnum
 			frame.code = p.code
 			stack = frame
 			pc = p.label
-			// stack_trace(stack)
-			//fmt.Printf("funcall to %d (%s), new frame = %v\n",pc,p.name,stack)
 
 		case TAILCALL:
 			argnum := int((i & OP1_N) >> OP1_N_SHIFT)
@@ -393,7 +391,6 @@ func run(ct Obj, stack *Frame) Obj {
 			stack.argnum = argnum
 			stack.code = p.code
 			pc = p.label
-			//fmt.Printf("tailcall to %d, new frame = %v\n",pc,stack)
 
 		case CONSARGS:
 			// Called at the very start of procedures with
@@ -430,7 +427,7 @@ func run(ct Obj, stack *Frame) Obj {
 				panic(fmt.Sprintf("Procedure %s at #x%x has no FRAME: #x%x",
 					p.name, p.label, i))
 			}
-			frame := call_frame(stack, r, pc, argnum+restlen+int((dst_i&OP1_R2)))
+			frame := call_frame(stack, &saved_frame, r, pc, argnum+restlen+int((dst_i&OP1_R2)))
 			copy(frame.regs, args)
 			frame.cc = p
 			frame.argnum = argnum + restlen
@@ -473,8 +470,6 @@ func run(ct Obj, stack *Frame) Obj {
 		// op2 format
 		case JUMP:
 			disp := (i & OP2_N) >> OP2_N_SHIFT
-			// fmt.Printf("JUMP DISPLACEMENT: %d = %d\n", disp, int17(disp))
-			// convert to signed:
 			abs := pc - 1 + int17(disp)
 			pc = abs
 
@@ -484,9 +479,6 @@ func run(ct Obj, stack *Frame) Obj {
 		case CLOSURE_LABEL:
 			p := (stack.regs[i&OP2_R]).(*Procedure)
 			disp := (i & OP2_N) >> OP2_N_SHIFT
-			// convert to signed:
-			// fmt.Printf("CLOSURE LABEL DISPLACEMENT: %x = %x = %x\n",
-			// 	disp, int17(disp), pc-1+int17(disp))
 			abs := pc - 1 + int17(disp)
 			p.label = abs
 
@@ -496,9 +488,6 @@ func run(ct Obj, stack *Frame) Obj {
 				continue
 			}
 			disp := (i & OP2_N) >> OP2_N_SHIFT
-			// fmt.Printf("BRANCH DISPLACEMENT: %d = %d\n",
-			// 	disp, int17(disp))
-			// convert to signed:
 			abs := pc - 1 + int17(disp)
 			pc = abs
 
@@ -521,21 +510,6 @@ func run(ct Obj, stack *Frame) Obj {
 				i>>I_SHIFT, i))
 		}
 	}
-}
-
-// XXX: Legacy implementation for the apply bytecode op
-func apply(args []Obj, ct Obj) Obj {
-	var funargs []Obj
-	fun := args[0]
-	// The last argument to apply is a list
-	last := args[len(args)-1]
-	funargs = make([]Obj, len(args)-2+fixnum_to_int(Length(last)))
-	copy(funargs, args[1:len(args)-1])
-	for i := len(args) - 2; last != Eol; i, last = i+1, cdr(last) {
-		funargs[i] = car(last)
-	}
-
-	return apply_procedure(fun, funargs, ct)
 }
 
 func apply_procedure(oproc Obj, args []Obj, ct Obj) Obj {

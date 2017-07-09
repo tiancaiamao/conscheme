@@ -74,7 +74,6 @@
     (string-ref . 43)
     (string-set! . 44)
     (make-string . 45)
-    (apply . 46)
     ($apply . 46)
     (procedure? . 47)
     (unspecified . 48)
@@ -343,8 +342,6 @@
 
 ;; Misc
 
-(define-operation apply                 ;legacy bytecode
-  (list (string-append "return apply(" (all-args) ", " (ct) ")")))
 (define-primitive ($apply fun . args))
 
 (define-call procedure? "procedure_p" 1)

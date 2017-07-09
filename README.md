@@ -9,9 +9,8 @@ Programming Language Technology course in the spring of 2011.
 Conscheme is a fairly complete R5RS implementation with some important
 features missing: syntax-rules, call/cc and dynamic-wind. It should be
 noted that there's nothing about Go that prevents us from providing
-call/cc: It is missing because our implementation of apply, which is a
-left-over from when we used an interpreter, prevents us from copying
-our stack.
+call/cc: it is missing because our implementation of apply previously
+prevented us from copying our stack.
 
 ## Current status
 
@@ -81,4 +80,19 @@ to build conscheme.image with Guile:
 
 ```
 $ guile ./main.scm -c '(compile-bytecode "main.scm" "conscheme.image")'
+```
+
+The conscheme binary has profiling enabled. Run this to profile memory
+allocation:
+
+```
+$ ./conscheme -memprofile conscheme.prof -script tests.scm
+$ go tool pprof --alloc_objects ./conscheme conscheme.prof
+```
+
+Here's CPU profiling:
+
+```
+$ ./conscheme -cpuprofile conscheme.prof -script tests.scm
+$ go tool pprof ./conscheme conscheme.prof
 ```

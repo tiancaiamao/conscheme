@@ -259,8 +259,6 @@ func evprimn(primop uint32, args []Obj, ct Obj) Obj {
 		return Void
 	case 47: // procedure?
 		return procedure_p(args[0])
-	case 46: // apply
-		return apply(args, ct)
 	case 45: // make-string
 		switch len(args) {
 		default:

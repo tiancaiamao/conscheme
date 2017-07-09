@@ -456,7 +456,7 @@ func Command_line() Obj {
 	ret := Eol
 	for i := len(os.Args) - 1; i >= 0; i-- {
 		arg := ([]rune)(os.Args[i])
-		ret = Cons(wrap(arg), ret)
+		ret = Cons(arg, ret)
 	}
 	return ret
 }

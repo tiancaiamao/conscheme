@@ -50,10 +50,6 @@ func wrap(x interface{}) Obj {
 	return x
 }
 
-type SuiGeneris struct {
-	repr string
-}
-
 type ScmChar struct {
 	codepoint rune
 }
@@ -66,9 +62,9 @@ type ScmSym struct {
 var (
 	False = Obj(false)
 	True  = Obj(true)
-	Eol   = Obj(SuiGeneris{"()"})      // empty list
-	Eof   = Obj(SuiGeneris{"#<eof>"})  // end of file object
-	Void  = Obj(SuiGeneris{"#<void>"}) // the unspecified value
+	Eol   = Obj([0]Obj{}) // empty list
+	Eof   = Obj(io.EOF)   // end of file object
+	Void  = Obj(nil)      // the unspecified value
 )
 
 // Chars
