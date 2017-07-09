@@ -43,7 +43,7 @@ func init() {
 	links := list.New()
 	thunk := Eol // XXX: makes (thread-start! primordial) not work
 	t := &Thread{name, False, thunk, Eol, once, channel, links}
-	primordial = wrap(t)
+	primordial = t
 }
 
 func _make_thread(thunk, name Obj) Obj {
@@ -53,9 +53,7 @@ func _make_thread(thunk, name Obj) Obj {
 	once := new(sync.Once)
 	channel := make(chan Obj, 100)
 	links := list.New()
-	t := &Thread{name, False, thunk, Eol, once, channel, links}
-	thread := wrap(t)
-	return thread
+	return &Thread{name, False, thunk, Eol, once, channel, links}
 }
 
 func thread_p(thread Obj) Obj {

@@ -69,11 +69,7 @@ func fixnum_to_int(x Obj) int {
 }
 
 func make_number(x int) Obj {
-	v := Make_fixnum(x)
-	if fixnum_to_int(v) != x {
-		return wrap(big.NewInt(int64(x)))
-	}
-	return v
+	return Make_fixnum(x)
 }
 
 func number_to_int(x Obj) int {
@@ -123,7 +119,7 @@ func denominator(num Obj) Obj {
 	case *big.Int:
 		return Make_fixnum(1)
 	case *big.Rat:
-		return wrap(n.Denom())
+		return n.Denom()
 	case float64:
 		panic("TODO: denominator for float64")
 	case complex128:
@@ -142,7 +138,7 @@ func number_add(x, y Obj) Obj {
 		if (r < i1) != (i2 < 0) {
 			var b1 *big.Int = big.NewInt(int64(i1))
 			var b2 *big.Int = big.NewInt(int64(i2))
-			return wrap(b1.Add(b1, b2))
+			return b1.Add(b1, b2)
 		} else {
 			return Make_fixnum(r)
 		}
@@ -157,7 +153,7 @@ func number_add(x, y Obj) Obj {
 		var z *big.Int = big.NewInt(0)
 		if yfx {
 			vy := big.NewInt(int64(fixnum_to_int(y)))
-			return wrap(z.Add(vx, vy))
+			return z.Add(vx, vy)
 		}
 		switch vy := (y).(type) {
 		case *big.Int:
@@ -181,15 +177,15 @@ func number_subtract(x, y Obj) Obj {
 		} else {
 			var b1 *big.Int = big.NewInt(int64(i1))
 			var b2 *big.Int = big.NewInt(int64(i2))
-			return wrap(b1.Sub(b1, b2))
+			return b1.Sub(b1, b2)
 		}
 	}
 
 	if xfx {
-		x = wrap(big.NewInt(int64(fixnum_to_int(x))))
+		x = big.NewInt(int64(fixnum_to_int(x)))
 	}
 	if yfx {
-		y = wrap(big.NewInt(int64(fixnum_to_int(y))))
+		y = big.NewInt(int64(fixnum_to_int(y)))
 	}
 
 	switch vx := (x).(type) {
@@ -215,16 +211,16 @@ func number_divide(x, y Obj) Obj {
 		if m == 0 && r > fixnum_min && r < fixnum_max {
 			return Make_fixnum(r)
 		} else {
-			return wrap(big.NewRat(int64(i1), int64(i2)))
+			return big.NewRat(int64(i1), int64(i2))
 		}
 	}
 
 	if xfx {
-		x = wrap(big.NewInt(int64(fixnum_to_int(x))))
+		x = big.NewInt(int64(fixnum_to_int(x)))
 	}
 	if yfx {
-		y = wrap(big.NewInt(int64(fixnum_to_int(y))))
-		//return wrap(z.Div(vx,vy))
+		y = big.NewInt(int64(fixnum_to_int(y)))
+		//return z.Div(vx,vy)
 	}
 
 	switch vx := (x).(type) {
@@ -257,14 +253,14 @@ func simpRat(x *big.Rat) Obj {
 	if x.Denom().Cmp(one_Int) == 0 {
 		return simpBig(x.Num())
 	}
-	return wrap(x)
+	return x
 }
 
 func simpBig(x *big.Int) Obj {
 	if x.Cmp(fixnum_min_Int) >= 0 && x.Cmp(fixnum_max_Int) <= 0 {
 		return Make_fixnum(int(x.Int64()))
 	}
-	return wrap(x)
+	return x
 }
 
 func number_multiply(x, y Obj) Obj {
@@ -277,15 +273,15 @@ func number_multiply(x, y Obj) Obj {
 		if r > int64(fixnum_min) && r < int64(fixnum_max) { // XXX: invalid overflow check
 			return Make_fixnum(int(r))
 		} else {
-			return wrap(big.NewInt(r))
+			return big.NewInt(r)
 		}
 	}
 
 	if xfx {
-		x = wrap(big.NewInt(int64(fixnum_to_int(x))))
+		x = big.NewInt(int64(fixnum_to_int(x)))
 	}
 	if yfx {
-		y = wrap(big.NewInt(int64(fixnum_to_int(y))))
+		y = big.NewInt(int64(fixnum_to_int(y)))
 	}
 
 	switch vx := (x).(type) {
@@ -391,11 +387,11 @@ func bitwise_ior(x, y Obj) Obj {
 		var z *big.Int = big.NewInt(0)
 		if yfx {
 			vy := big.NewInt(int64(fixnum_to_int(y)))
-			return wrap(z.Or(vx, vy))
+			return z.Or(vx, vy)
 		}
 		switch vy := (y).(type) {
 		case *big.Int:
-			return wrap(z.Or(vx, vy))
+			return z.Or(vx, vy)
 		default:
 			panic("bad type")
 		}
@@ -421,11 +417,11 @@ func bitwise_and(x, y Obj) Obj {
 		var z *big.Int = big.NewInt(0)
 		if yfx {
 			vy := big.NewInt(int64(fixnum_to_int(y)))
-			return wrap(z.And(vx, vy))
+			return z.And(vx, vy)
 		}
 		switch vy := (y).(type) {
 		case *big.Int:
-			return wrap(z.And(vx, vy))
+			return z.And(vx, vy)
 		default:
 			panic("bad type")
 		}
@@ -451,7 +447,7 @@ func bitwise_arithmetic_shift_right(x, y Obj) Obj {
 	switch vx := (x).(type) {
 	case *big.Int:
 		var z *big.Int = big.NewInt(0)
-		return wrap(z.Rsh(vx, amount))
+		return z.Rsh(vx, amount)
 	}
 	panic("bad type")
 }
@@ -470,16 +466,16 @@ func bitwise_arithmetic_shift_left(x, y Obj) Obj {
 		if r>>amount == i {
 			return Obj(r)
 		} else {
-			return wrap(big.NewInt(int64(r)))
+			return big.NewInt(int64(r))
 		}
 	} else if xfx {
-		x = wrap(big.NewInt(int64(fixnum_to_int(x))))
+		x = big.NewInt(int64(fixnum_to_int(x)))
 	}
 
 	switch vx := (x).(type) {
 	case *big.Int:
 		var z *big.Int = big.NewInt(0)
-		return wrap(z.Lsh(vx, amount))
+		return z.Lsh(vx, amount)
 	}
 	panic("bad type")
 }
@@ -555,5 +551,5 @@ func _string_to_number(_str Obj, _radix Obj) Obj {
 	if z.Cmp(fixnum_max_Int) < 1 && z.Cmp(fixnum_min_Int) > -1 {
 		return Make_fixnum(int(z.Int64()))
 	}
-	return wrap(z)
+	return z
 }

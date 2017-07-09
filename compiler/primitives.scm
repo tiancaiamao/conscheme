@@ -223,11 +223,11 @@
                     (number (number->string (primitive-number (car prim)))))
                 (display (string-append
                           "\tprimitive[" number "] = "
-                          "wrap(&Procedure{name: \"" (symbol->string (car prim)) "\","
+                          "&Procedure{name: \"" (symbol->string (car prim)) "\","
                           " required: " (number->string required) ","
                           " apply: nil,"
                           " label: " number
-                          "})\n"))))
+                          "}\n"))))
             *primitives*)
   (display "}\n\n" p)
 

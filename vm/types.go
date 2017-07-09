@@ -46,10 +46,6 @@ import (
 // The type of all Scheme objects.
 type Obj interface{}
 
-func wrap(x interface{}) Obj {
-	return x
-}
-
 type ScmChar struct {
 	codepoint rune
 }

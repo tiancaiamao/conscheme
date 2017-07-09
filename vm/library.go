@@ -76,10 +76,10 @@ var stdin, curin, stdout, curout Obj
 
 func init() {
 	// FIXME: per-thread
-	stdin = wrap(&InputPort{r: os.Stdin, is_binary: false})
+	stdin = &InputPort{r: os.Stdin, is_binary: false}
 	curin = stdin
 
-	stdout = wrap(&OutputPort{w: os.Stdout, is_binary: false})
+	stdout = &OutputPort{w: os.Stdout, is_binary: false}
 	curout = stdout
 }
 
@@ -164,7 +164,7 @@ func open_input_file(fn Obj) Obj {
 	if e != nil {
 		panic(fmt.Sprintf("I/O error: %s", e))
 	}
-	return wrap(&InputPort{r: f, is_binary: false})
+	return &InputPort{r: f, is_binary: false}
 }
 
 func open_output_file(fn Obj) Obj {
@@ -172,7 +172,7 @@ func open_output_file(fn Obj) Obj {
 	if e != nil {
 		panic(fmt.Sprintf("I/O error: %s", e))
 	}
-	return wrap(&OutputPort{w: f, is_binary: false})
+	return &OutputPort{w: f, is_binary: false}
 }
 
 func open_file_output_port(fn Obj) Obj {
@@ -181,7 +181,7 @@ func open_file_output_port(fn Obj) Obj {
 	if e != nil {
 		panic(fmt.Sprintf("I/O error: %s", e))
 	}
-	return wrap(&OutputPort{w: f, is_binary: true})
+	return &OutputPort{w: f, is_binary: true}
 }
 
 func close_input_port(port Obj) Obj {
@@ -427,7 +427,7 @@ func u8_list_to_bytevector(l Obj) Obj {
 		l = v[1]
 	}
 
-	return wrap(bv)
+	return bv
 }
 
 func string_to_utf8(str Obj) Obj {
@@ -447,7 +447,7 @@ func _bytevector_output_port_extract(p Obj) Obj {
 	copy(ret, sink.Bytes())
 	sink.Reset()
 
-	return wrap(ret)
+	return ret
 }
 
 // Misc
