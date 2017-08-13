@@ -397,7 +397,11 @@
                (f (car l))
                (lp (cdr l)))))))
 
-(define *winders* '())                  ;FIXME: must be thread-local
+(define ($winders)
+  (thread-winders (current-thread)))
+
+(define ($set-winders! winders)
+  (thread-winders-set! (current-thread) winders))
 
 (define (call/cc proc)
   (let ((k ($copy-stack)))
@@ -405,27 +409,28 @@
     ;; returns a copy of the stack. The following times it returns the
     ;; values passed to the continuation.
     (cond (($stack? k)
-           (letrec ((old-winders *winders*)
+           (letrec ((old-winders ($winders))
                     (do-winds
                      (lambda (to delta)
                        ;; The do-winds procedure is stolen from
                        ;; SLIB's dynwind.scm. It was modified.
                        ;; Copyright (c) 1992, 1993 Aubrey Jaffer
-                       (cond ((eq? *winders* to))
+                       (cond ((eq? ($winders) to))
                              ((negative? delta)
                               (do-winds (cdr to) (+ delta 1))
                               ((caar to))
-                              (set! *winders* to))
+                              ($set-winders! to))
                              (else
-                              (let ((from (cdar *winders*)))
-                                (set! *winders* (cdr *winders*))
+                              (let* ((winders ($winders))
+                                     (from (cdar winders)))
+                                ($set-winders! (cdr winders))
                                 (from)
                                 (do-winds to (- delta 1)))))))
                     (continuation
                      (lambda (v)
                        ;; TODO: multiple values
                        (do-winds old-winders
-                                 (- (length *winders*)
+                                 (- (length ($winders))
                                     (length old-winders)))
                        ($restore-stack k v))))
              (proc continuation)))
@@ -437,10 +442,10 @@
 
 (define (dynamic-wind before thunk after)
   (before)
-  (set! *winders* (cons (cons before after)
-                        *winders*))
+  ($set-winders! (cons (cons before after)
+                       ($winders)))
   (let-values ((v (thunk)))
-    (set! *winders* (cdr *winders*))
+    ($set-winders! (cdr ($winders)))
     (after)
     (apply values v)))
 

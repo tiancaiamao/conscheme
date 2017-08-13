@@ -5,7 +5,7 @@ package vm
 import "fmt"
 import "os"
 
-var primitive [108]Obj
+var primitive [110]Obj
 
 func init() {
 	primitive[98] = &Procedure{name: "stop-cpu-profile", required: 0, apply: nil, label: 98}
@@ -13,6 +13,8 @@ func init() {
 	primitive[96] = &Procedure{name: "current-thread", required: 0, apply: nil, label: 96}
 	primitive[95] = &Procedure{name: "$receive", required: 1, apply: nil, label: 95}
 	primitive[94] = &Procedure{name: "send", required: 2, apply: nil, label: 94}
+	primitive[109] = &Procedure{name: "thread-winders-set!", required: 2, apply: nil, label: 109}
+	primitive[108] = &Procedure{name: "thread-winders", required: 1, apply: nil, label: 108}
 	primitive[93] = &Procedure{name: "thread-link!", required: 2, apply: nil, label: 93}
 	primitive[92] = &Procedure{name: "thread-start!", required: 1, apply: nil, label: 92}
 	primitive[91] = &Procedure{name: "thread-yield!", required: 0, apply: nil, label: 91}
@@ -130,6 +132,10 @@ func evprimn(primop uint32, args []Obj, ct Obj) Obj {
 		return _receive(args[0])
 	case 94: // send
 		return send(args[0], args[1])
+	case 109: // thread-winders-set!
+		return thread_winders_set_ex(args[0], args[1])
+	case 108: // thread-winders
+		return thread_winders(args[0])
 	case 93: // thread-link!
 		return thread_link_ex(args[0], args[1])
 	case 92: // thread-start!

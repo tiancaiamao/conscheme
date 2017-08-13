@@ -7,7 +7,7 @@ in Gothenburg, Sweden. It was done as part of the Frontiers of
 Programming Language Technology course in the spring of 2011.
 
 Conscheme is a fairly complete R5RS implementation with some important
-features missing: syntax-rules, call/cc and dynamic-wind. It should be
+features missing: syntax-rules and full numeric tower. It should be
 noted that there's nothing about Go that prevents us from providing
 call/cc: it is missing because our implementation of apply previously
 prevented us from copying our stack.

@@ -135,7 +135,9 @@
     (open-string-input-port . 104)
     ($copy-stack . 105)
     ($restore-stack . 106)
-    ($stack? . 107)))
+    ($stack? . 107)
+    (thread-winders . 108)
+    (thread-winders-set! . 109)))
 
 (define (primitive-number name)
   (let ((v (assq name *primitive-numbers*)))
@@ -484,6 +486,8 @@
 (define-call thread-yield! "thread_yield_ex" 0)
 (define-call thread-start! "thread_start_ex" 1)
 (define-call thread-link! "thread_link_ex" 2)
+(define-call thread-winders "thread_winders" 1)
+(define-call thread-winders-set! "thread_winders_set_ex" 2)
 (define-call send "send" 2)
 (define-call $receive "_receive" 1)
 

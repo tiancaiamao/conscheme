@@ -28,10 +28,14 @@ import (
 )
 
 type Thread struct {
-	name, specific, thunk, queue Obj
-	once                         *sync.Once
-	channel                      chan Obj
-	links                        *list.List
+	name     Obj
+	specific Obj
+	thunk    Obj
+	queue    Obj
+	once     *sync.Once
+	channel  chan Obj
+	links    *list.List
+	winders  Obj
 }
 
 var primordial Obj
@@ -42,7 +46,7 @@ func init() {
 	channel := make(chan Obj, 100)
 	links := list.New()
 	thunk := Eol // XXX: makes (thread-start! primordial) not work
-	t := &Thread{name, False, thunk, Eol, once, channel, links}
+	t := &Thread{name, False, thunk, Eol, once, channel, links, Eol}
 	primordial = t
 }
 
@@ -53,7 +57,7 @@ func _make_thread(thunk, name Obj) Obj {
 	once := new(sync.Once)
 	channel := make(chan Obj, 100)
 	links := list.New()
-	return &Thread{name, False, thunk, Eol, once, channel, links}
+	return &Thread{name, False, thunk, Eol, once, channel, links, Eol}
 }
 
 func thread_p(thread Obj) Obj {
@@ -89,6 +93,17 @@ func thread_queue(thread Obj) Obj {
 func thread_queue_set_ex(thread, v Obj) Obj {
 	t := (thread).(*Thread)
 	t.queue = v
+	return Void
+}
+
+func thread_winders(thread Obj) Obj {
+	t := (thread).(*Thread)
+	return t.winders
+}
+
+func thread_winders_set_ex(thread, v Obj) Obj {
+	t := (thread).(*Thread)
+	t.winders = v
 	return Void
 }
 
