@@ -5,7 +5,7 @@ package vm
 import "fmt"
 import "os"
 
-var primitive [105]Obj
+var primitive [108]Obj
 
 func init() {
 	primitive[98] = &Procedure{name: "stop-cpu-profile", required: 0, apply: nil, label: 98}
@@ -65,6 +65,9 @@ func init() {
 	primitive[49] = &Procedure{name: "eof-object", required: 0, apply: nil, label: 49}
 	primitive[48] = &Procedure{name: "unspecified", required: 0, apply: nil, label: 48}
 	primitive[47] = &Procedure{name: "procedure?", required: 1, apply: nil, label: 47}
+	primitive[107] = &Procedure{name: "$stack?", required: 1, apply: nil, label: 107}
+	primitive[106] = &Procedure{name: "$restore-stack", required: 1, apply: nil, label: 106}
+	primitive[105] = &Procedure{name: "$copy-stack", required: 0, apply: nil, label: 105}
 	primitive[46] = &Procedure{name: "$apply", required: 1, apply: nil, label: 46}
 	primitive[45] = &Procedure{name: "make-string", required: 1, apply: nil, label: 45}
 	primitive[44] = &Procedure{name: "string-set!", required: 3, apply: nil, label: 44}
@@ -259,6 +262,13 @@ func evprimn(primop uint32, args []Obj, ct Obj) Obj {
 		return Void
 	case 47: // procedure?
 		return procedure_p(args[0])
+	case 107: // $stack?
+		switch (args[0]).(type) {
+		default:
+			return False
+		case *Stack:
+			return True
+		}
 	case 45: // make-string
 		switch len(args) {
 		default:

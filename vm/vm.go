@@ -28,7 +28,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	// "runtime/debug"
+	"runtime/debug"
 )
 
 // When GOMAXPROCS is larger than 1, we apparently need to implement
@@ -58,6 +58,7 @@ const (
 	PRIMREF       = 18
 	APPLYCALL     = 19
 	TAILAPPLY     = 20
+	STACK_CTRL    = 21
 
 	// Instruction fields
 	I_SHIFT      = 27
@@ -231,6 +232,28 @@ func tail_frame(f *Frame, n int) {
 	}
 }
 
+type Stack struct {
+	frame    *Frame
+	argstack Argstack
+}
+
+func copy_frame(src *Frame) *Frame {
+	if src == nil {
+		return nil
+	}
+
+	ret := &Frame{}
+	*ret = *src
+	ret.regs = append([]Obj{}, ret.regs...)
+	ret.up = copy_frame(ret.up)
+
+	return ret
+}
+
+func copy_stack(f *Frame, argstack Argstack) *Stack {
+	return &Stack{copy_frame(f), append([]Obj{}, argstack...)}
+}
+
 func _bytecode_run(bytecode, constants, current_thread Obj) Obj {
 	// The bytecode is 32-bit integers encoded in little endian format
 	_bc := (bytecode).([]byte)
@@ -257,7 +280,7 @@ func run(ct Obj, stack *Frame) Obj {
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Printf("Error in Scheme code: %v\n", err)
-			// debug.PrintStack()
+			debug.PrintStack()
 			stack_trace(stack)
 			panic("no error recovery yet")
 		}
@@ -466,6 +489,33 @@ func run(ct Obj, stack *Frame) Obj {
 			stack.argnum = argnum + restlen
 			stack.code = p.code
 			pc = p.label
+
+		case STACK_CTRL:
+			subop := (i & OP1_N) >> OP1_N_SHIFT
+			switch subop {
+			case 0: // copy-stack
+				dst := (i & OP1_R2)
+				copied_stack := copy_stack(stack, argstack)
+				copied_stack.argstack.Push(pc)
+				copied_stack.argstack.Push(dst)
+				stack.regs[dst] = copied_stack
+			case 1: // restore-stack
+				stk := stack.regs[(i & OP1_R2)].(*Stack)
+				return_value := stack.regs[(i&OP1_R1)>>OP1_R1_SHIFT]
+				new_stack := copy_frame(stk.frame)
+				argstack = append([]Obj{}, stk.argstack...)
+				dst_reg := stk.argstack.Pop().(uint32)
+				new_pc := stk.argstack.Pop().(int)
+
+				// Switch to the restored stack
+				stack = new_stack
+				pc = new_pc
+				stack.regs[dst_reg] = return_value
+
+			default:
+				panic(fmt.Sprintf("Unimplemented bytecode stack control op: #b%b (in #x%x)",
+					subop, i))
+			}
 
 		// op2 format
 		case JUMP:

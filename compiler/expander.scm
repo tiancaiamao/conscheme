@@ -128,6 +128,18 @@
                bindings)
           body))
 
+(define-macro (let-values bindings . body)
+  (if (null? bindings)
+      `(let () ,@body)
+      (let* ((binding (car bindings))
+             (formals (car binding))
+             (producer (cadr binding)))
+        `(call-with-values (lambda ()
+                             ,producer)
+                           (lambda ,formals
+                             (let-values ,(cdr bindings)
+                               ,@body))))))
+
 (define-macro (include filename)
   (call-with-input-file filename
     (lambda (p)

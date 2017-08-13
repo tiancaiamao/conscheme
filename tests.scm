@@ -115,3 +115,100 @@
                     ((= i 300000)))
                 (cons 'something x))
               '(1 2 3 4 5 6 7 8 9 10))
+
+;; call/cc
+
+(check (call/cc (lambda (k) 1)) => 1)
+(check (call/cc (lambda (k) (k 1))) => 1)
+(check (call/cc (lambda (k) (k 1) 2)) => 1)
+
+(check (call-with-current-continuation  ;r6rs
+         (lambda (exit)
+           (for-each (lambda (x)
+                       (if (negative? x)
+                           (exit x)))
+                     '(54 0 37 -3 245 19))
+           #t)) => -3)
+
+(define list-length                     ;r6rs
+  (lambda (obj)
+    (call-with-current-continuation
+      (lambda (return)
+         (letrec ((r
+                   (lambda (obj)
+                     (cond ((null? obj) 0)
+                           ((pair? obj)
+                            (+ (r (cdr obj)) 1))
+                           (else (return #f))))))
+           (r obj))))))
+
+(check (list-length '(1 2 3 4)) => 4)
+
+(check (let ((log '()))
+         (call/cc
+           (lambda (k)
+             (dynamic-wind
+               (lambda () (set! log (cons 'before log)))
+               (lambda () (set! log (cons 'thunk log)))
+               (lambda () (set! log (cons 'after log))))))
+         (reverse log))
+       => '(before thunk after))
+
+(check (let ((log '()))
+         (call/cc
+           (lambda (k)
+             (dynamic-wind
+               (lambda () (set! log (cons 'before log)))
+               (lambda () (k 0) (set! log (cons 'thunk log)))
+               (lambda () (set! log (cons 'after log))))))
+         (reverse log))
+       => '(before after))
+
+(check (let ((path '())                     ;r6rs
+             (c #f))
+         (let ((add (lambda (s)
+                      (set! path (cons s path)))))
+           (dynamic-wind
+             (lambda () (add 'connect))
+             (lambda ()
+               (add (call-with-current-continuation
+                      (lambda (c0)
+                        (set! c c0)
+                        'talk1))))
+             (lambda () (add 'disconnect)))
+           (if (< (length path) 4)
+               (c 'talk2)
+               (reverse path))))
+       => '(connect talk1 disconnect
+                    connect talk2 disconnect))
+
+(check (let ((n 0))                     ;r6rs
+         (call-with-current-continuation
+           (lambda (k)
+             (dynamic-wind
+               (lambda  ()
+                 (set!  n (+ n 1))
+                 (k))
+               (lambda  ()
+                 (set!  n (+ n 2)))
+               (lambda  ()
+                 (set!  n (+ n 4))))))
+         n)  => 1)
+
+(check (let ((n 0))                     ;r6s
+         (call-with-current-continuation
+           (lambda (k)
+             (dynamic-wind
+               values
+               (lambda ()
+                 (dynamic-wind
+                   values
+                   (lambda ()
+                     (set! n (+ n 1))
+                     (k))
+                   (lambda ()
+                     (set! n (+ n 2))
+                     (k))))
+               (lambda ()
+                 (set! n (+ n 4))))))
+         n) => 7)

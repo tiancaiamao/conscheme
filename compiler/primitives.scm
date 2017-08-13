@@ -132,7 +132,10 @@
     (thread-queue . 101)
     (thread-queue-set! . 102)
     ($bytecode-load . 103)
-    (open-string-input-port . 104)))
+    (open-string-input-port . 104)
+    ($copy-stack . 105)
+    ($restore-stack . 106)
+    ($stack? . 107)))
 
 (define (primitive-number name)
   (let ((v (assq name *primitive-numbers*)))
@@ -343,6 +346,16 @@
 ;; Misc
 
 (define-primitive ($apply fun . args))
+(define-primitive ($copy-stack))
+(define-primitive ($restore-stack stack . args))
+(define-operation $stack?
+  (list (string-append "switch (" (argn 0) ").(type) {")
+        "default:"
+        "\treturn False"
+        "case *Stack:"
+        "\treturn True"
+        "}"))
+(define-primitive ($stack? obj))
 
 (define-call procedure? "procedure_p" 1)
 
@@ -525,6 +538,8 @@
            (cond (primop
                   (primcall primop (car x) (map (lambda (x) (primops x)) (cdr x))))
                  ((eq? (car x) 'apply)
-                  (primcall (lookup-primop '$apply) '$apply (map (lambda (x) (primops x)) (cdr x))))
+                  (primcall (lookup-primop '$apply)
+                            '$apply
+                            (map (lambda (x) (primops x)) (cdr x))))
                  (else
                   (cons '$funcall (map (lambda (x) (primops x)) x)))))))))
