@@ -5,9 +5,11 @@ package vm
 import "fmt"
 import "os"
 
-var primitive [110]Obj
+var primitive [112]Obj
 
 func init() {
+	primitive[111] = &Procedure{name: "plugin-lookup", required: 2, apply: nil, label: 111}
+	primitive[110] = &Procedure{name: "load-plugin", required: 1, apply: nil, label: 110}
 	primitive[98] = &Procedure{name: "stop-cpu-profile", required: 0, apply: nil, label: 98}
 	primitive[97] = &Procedure{name: "start-cpu-profile", required: 1, apply: nil, label: 97}
 	primitive[96] = &Procedure{name: "current-thread", required: 0, apply: nil, label: 96}
@@ -122,6 +124,10 @@ func init() {
 
 func evprimn(primop uint32, args []Obj, ct Obj) Obj {
 	switch primop {
+	case 111: // plugin-lookup
+		return plugin_lookup(args[0], args[1])
+	case 110: // load-plugin
+		return load_plugin(args[0])
 	case 98: // stop-cpu-profile
 		return stop_cpu_profile()
 	case 97: // start-cpu-profile

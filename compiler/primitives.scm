@@ -137,7 +137,9 @@
     ($restore-stack . 106)
     ($stack? . 107)
     (thread-winders . 108)
-    (thread-winders-set! . 109)))
+    (thread-winders-set! . 109)
+    (load-plugin . 110)
+    (plugin-lookup . 111)))
 
 (define (primitive-number name)
   (let ((v (assq name *primitive-numbers*)))
@@ -499,6 +501,11 @@
 
 (define-call start-cpu-profile "start_cpu_profile" 1)
 (define-call stop-cpu-profile "stop_cpu_profile" 0)
+
+;; Plugin
+
+(define-call load-plugin "load_plugin" 1)
+(define-call plugin-lookup "plugin_lookup" 2)
 
 ;;; A compiler pass
 

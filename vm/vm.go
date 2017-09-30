@@ -27,6 +27,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"plugin"
 	"runtime"
 	"runtime/debug"
 )
@@ -157,6 +158,7 @@ type Procedure struct {
 	name     string
 	required int
 	apply    func(proc *Procedure, args []Obj, ct Obj) Obj
+	plugin   plugin.Symbol
 	label    int
 	free     []Obj
 	code     *Code
@@ -577,6 +579,10 @@ func apply_primitive(proc *Procedure, args []Obj, ct Obj) Obj {
 	// arguments, like e.g. make-string
 	if len(args) < proc.required {
 		panic(fmt.Sprintf("Too few arguments to primitive procedure %s", proc.name))
+	}
+	if proc.plugin != nil {
+		fn := proc.plugin.(func([]Obj) Obj)
+		return fn(args)
 	}
 	return evprimn(uint32(proc.label), args, ct)
 }

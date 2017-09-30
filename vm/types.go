@@ -40,6 +40,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"plugin"
 	"sync"
 )
 
@@ -345,6 +346,19 @@ func Symbol_to_string(x Obj) Obj {
 	return ([]rune)(x.(*ScmSym).str)
 }
 
+type Plugin struct {
+	name string
+	*plugin.Plugin
+}
+
+func plugin_p(p Obj) Obj {
+	switch p.(type) {
+	case *Plugin:
+		return true
+	}
+	return false
+}
+
 // Object printer (for debugging)
 
 func Obj_display(x Obj, p io.Writer, write Obj) {
@@ -433,6 +447,9 @@ func Obj_display(x Obj, p io.Writer, write Obj) {
 		t := (x).(*Thread)
 		Obj_display(t.name, p, write)
 		fmt.Fprintf(p, ">")
+	case plugin_p(x) != False:
+		t := (x).(*Plugin)
+		fmt.Fprintf(p, "#<plugin %s>", t.name)
 	// Unknown types
 	default:
 		fmt.Fprintf(p, "#<obj %x>", x)

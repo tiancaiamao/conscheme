@@ -28,6 +28,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"plugin"
 	"runtime/pprof"
 	"unicode"
 	"unicode/utf8"
@@ -482,4 +484,32 @@ func start_cpu_profile(p Obj) Obj {
 func stop_cpu_profile() Obj {
 	pprof.StopCPUProfile()
 	return Void
+}
+
+func load_plugin(o Obj) Obj {
+	path := string(o.([]rune))
+	p, err := plugin.Open(path)
+	if err != nil {
+		panic(fmt.Sprintf("bad plugin path: %s", err))
+	}
+	_, file := filepath.Split(path)
+	return &Plugin{
+		name:   file,
+		Plugin: p,
+	}
+}
+
+func plugin_lookup(p, m Obj) Obj {
+	p1 := p.(*Plugin)
+	m1 := string(m.([]rune))
+
+	sym, err := p1.Lookup(m1)
+	if err != nil {
+		panic(err)
+	}
+
+	return &Procedure{
+		name:   m1,
+		plugin: sym,
+	}
 }
